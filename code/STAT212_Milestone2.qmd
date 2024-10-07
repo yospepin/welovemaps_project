@@ -6,6 +6,16 @@ format:
     embed-resources: true
 ---
 
+TO-DO:
+
+* In a Milestone2.qmd file, complete the steps in your plan from Milestone 1 (the plan with feedback from the instructional team).
+
+* At the bottom of Milestone2.qmd, write a plan for further pursuing your 2-3 broad questions. Make sure that the steps in this plan are reasonable to complete in the next few weeks for Milestone 3 (which involves writing a short blog with initial data story (your results so far). You will receive feedback on this plan and will be expected to integrate this feedback for Milestone 3. Questions to think about as you develop this plan:
+
+Do your 2-3 original broad questions need to be revised?
+What additional information and context (news articles, journal articles, expert interview, etc.) do you need to understand the data?
+Is it time to start looking for additional datasets?
+
 ```{r}
 sessionInfo()
 ```

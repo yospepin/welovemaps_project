@@ -19,7 +19,7 @@ Analyzing the relationship between demographic changes and income variations in 
 ## Data
 
 ```{r}
-income_mncounty <- read.csv("data exploration/CAINC4/CAINC4_MN_1969_2022.csv")
+income_mncounty <- read.csv("../data/CAINC4/CAINC4_MN_1969_2022.csv")
 head(income_mncounty)
 ```
 
@@ -83,10 +83,10 @@ Per capita personal income (Dollars) The average income per person in each count
 -   Possible data:
 
 ```{r}
-demographic_agesex <- read.csv("data exploration/cc-est2019-agesex-27.csv")
+demographic_agesex <- read.csv("../data/cc-est2019-agesex-27.csv")
 head(demographic_agesex)
 
-demographic_all <- read.csv("data exploration/cc-est2019-alldata-27.csv")
+demographic_all <- read.csv("../data/cc-est2019-alldata-27.csv")
 head(demographic_all)
 ```
 
