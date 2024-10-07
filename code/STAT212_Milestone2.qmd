@@ -5,3 +5,8 @@ format:
   html:
     embed-resources: true
 ---
+
+```{r}
+sessionInfo()
+```
+

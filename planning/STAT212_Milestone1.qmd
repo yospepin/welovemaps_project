@@ -111,3 +111,8 @@ head(demographic_all)
 - And then try to make one visualization for the whole state. Our idea is to make two separate interactive graphs, with maps on top and line income graphs on the bottow.
 
 -   If we want to see urban rural divide, then decide a threshold and classify the counties into rural and urban.
+
+```{r}
+sessionInfo()
+```
+
