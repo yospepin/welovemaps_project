@@ -1,0 +1,113 @@
+---
+title: "STAT212_Milestone1"
+author: "Ellie, Iris, Yosephine"
+format: 
+  html:
+    embed-resources: true
+---
+
+## Project Topic
+
+Analyzing the relationship between demographic changes and income variations in Minnesota counties from 2012 to 2022.
+
+## Questions
+
+-   How do shifts in racial and ethnic population demographics correlate with income changes across Minnesota counties over the past decade?
+-   How does income growth or decline vary across counties with significant changes in age, education levels, or household structures?
+-   How have rural vs. urban counties in Minnesota been affected by demographic changes in relation to income distribution?
+
+## Data
+
+```{r}
+income_mncounty <- read.csv("data exploration/CAINC4/CAINC4_MN_1969_2022.csv")
+head(income_mncounty)
+```
+
+## Data Context
+
+This dataset was collected from the Bureau of Economic Analysis, US Department of Commerce website. It provides detailed financial and employment statistics for Minnesota counties across multiple years (from 1969 to 2022). The dataset tracks economic indicators such as employer contributions to employee pensions, government social insurance, personal incomes, farm and nonfarm income, employment, and wage and salary data.
+
+## Data Codebook
+
+#### General Variables
+
+-   GeoName: The name of the geographical region (County name in Minnesota).
+-   Region: The specific region code for Minnesota.
+-   TableName: The table identifier for economic indicators (e.g., CAINC4).
+-   LineCode: The specific code corresponding to different economic measures such as contributions to insurance funds, farm income, etc.
+-   Description: Detailed description of the data within each LineCode, such as employer contributions or total income.
+
+#### Financial Variables (Thousands of dollars)
+
+-   Employee contributions for government social insurance
+
+From 1969 to 2022, this variable tracks the contributions of employees and self-employed individuals to government social insurance programs.
+
+-   Employer contributions for employee pension and insurance Funds
+
+Tracks the amount contributed by employers towards pension and insurance funds for their employees.
+
+-   Employer contributions for government social insurance
+
+Contributions made by employers to government social insurance schemes.
+
+-   Farm income
+
+Total farm income in thousands of dollars. This includes income from farm proprietors and agricultural operations.
+
+-   Nonfarm personal income
+
+Measures the income generated outside of farming operations.
+
+-   Nonfarm proprietors' income
+
+Income earned by nonfarm business proprietors, such as small business owners.
+
+#### Employment Variables (Number of Jobs)
+
+-   Proprietors' employment Tracks the total number of jobs held by proprietors (farm and nonfarm) in Minnesota.
+
+-   Wage and salary employment
+
+Tracks the number of wage and salary jobs in Minnesota for each year.
+
+#### Income Per Capita
+
+Per capita personal income (Dollars) The average income per person in each county for each year, serving as an indicator of the standard of living and economic health in Minnesota counties.
+
+## Plan
+
+1.  Data merging
+
+-   Identify reliable sources for demographic data by county. Possible source is from US Census Bureau
+-   Possible data:
+
+```{r}
+demographic_agesex <- read.csv("data exploration/cc-est2019-agesex-27.csv")
+head(demographic_agesex)
+
+demographic_all <- read.csv("data exploration/cc-est2019-alldata-27.csv")
+head(demographic_all)
+```
+
+-   Combine the data
+
+2.  Data cleaning
+
+-   Check for missing or inconsistent data entries
+-   Remove or impute missing values as necessary
+-   Ensure numerical values are in the correct format
+
+3.  Data exploration and visualization
+
+-   Use visualizations (e.g., histograms, box plots, scatter plots) to examine the income variations and demographic changes
+  Example visualizations:
+  Trend lines for income growth across different demographic groups, Histograms for income distribution by county for specific years.
+
+-   First of all, we can try seeing the trend of demographic and income across counties in Minnesota, during a particular year
+
+-   And then we can pick one county as an example and visualize the change in demographic within that county, as well as the change of income within that county.
+
+- And then try to make one visualization for the whole state. Our idea is to make two separate interactive graphs, with maps on top and line income graphs on the bottow.
+
+-   If we want to see urban rural divide, then decide a threshold and classify the counties into rural and urban.

@@ -1,0 +1,7 @@
+---
+title: "STAT212_Milestone2"
+author: "Ellie, Iris, Yosephine"
+format: 
+  html:
+    embed-resources: true
+---
