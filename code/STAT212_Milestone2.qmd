@@ -19,11 +19,6 @@ Is it time to start looking for additional datasets?
 ```{r}
 sessionInfo()
 ```
----
-title: "Data Cleaning"
-format: html
-editor: visual
----
 
 ```{r}
 # Load necessary libraries
