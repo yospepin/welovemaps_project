@@ -7,22 +7,16 @@ editor: visual
 ```{r}
 library(readr)
 
-# Read the CSV file
 data <- read_csv("../data/CAINC4/CAINC4_MN_1969_2022.csv")
 
-
-# Display the first few rows
 head(data)
 ```
 
 ```{r, include=FALSE, message=FALSE, warning=FALSE}
-# Check the structure of the dataset (column names, types, etc.)
 str(data)
 
-# Get a summary of the dataset (min, max, mean for numerical columns)
 summary(data)
 
-# Check for any missing values in the dataset
 colSums(is.na(data))
 
 ```
@@ -35,23 +29,17 @@ unique(data$Description)
 # Filter for Personal income and Per capita personal income
 filtered_data <- data[data$Description %in% c("Personal income (thousands of dollars)", "Per capita personal income (dollars) 4/"), ]
 
-
-
-# Display the structure of the filtered dataset
 str(filtered_data)
 
-# View the first few rows of the filtered dataset
 head(filtered_data)
 ```
 
 ```{r}
-# Remove the specified columns from the dataset
+# Remove columns from the dataset
 filtered_data <- filtered_data[, !(names(filtered_data) %in% c("Region", "LineCode", "TableName", "IndustryClassification", "Unit"))]
 
-# Display the structure of the updated dataset to verify the changes
 str(filtered_data)
 
-# View the first few rows of the cleaned dataset
 head(filtered_data)
 ```
 
@@ -59,9 +47,37 @@ head(filtered_data)
 # Remove rows with NA values
 filtered_data <- na.omit(filtered_data)
 
-# Display the structure of the cleaned dataset to verify
 str(filtered_data)
 
-# View the first few rows of the cleaned dataset
 head(filtered_data)
 ```
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(scales)  # standard notation
+
+# Minnesota and Personal income
+df_mn <- filtered_data %>%
+  filter(Description == "Personal income (thousands of dollars)" & GeoName == "Minnesota")
+
+# wide to long format
+df_mn_long <- df_mn %>%
+  pivot_longer(cols = starts_with("19"),  # Select columns for the years (e.g., 1969, 1970, etc.)
+               names_to = "Year",         # Column to store the years
+               values_to = "Income")      # Column to store the income values
+
+# 'Year' to numeric
+df_mn_long$Year <- as.numeric(df_mn_long$Year)
+
+#standard notation for the y-axis
+ggplot(df_mn_long, aes(x = Year, y = Income)) +
+  geom_line(color = "blue", size = 1) +
+  labs(title = "Personal Income Over Time in Minnesota",
+       x = "Year",
+       y = "Personal Income (Thousands of Dollars)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
+  scale_y_continuous(labels = scales::comma)  
+```
+For further pursuing my 2-3 broad questions, I plan to refine and potentially revise these questions based on my initial findings and feedback. In the next few weeks, I will focus on deepening my understanding of the dataset by gathering additional context from journal articles and relevant news sources to better interpret trends and patterns. If the current dataset doesn't fully address my questions, I will explore supplementary datasets that could enhance the analysis. I aim to conduct preliminary analyses, generate visualizations, and begin drafting the narrative for my blog. This plan allows time for incorporating feedback, ensuring a cohesive data story for Milestone 3.
