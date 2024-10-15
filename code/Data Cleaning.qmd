@@ -1,0 +1,67 @@
+---
+title: "Data Cleaning"
+format: html
+editor: visual
+---
+
+```{r}
+library(readr)
+
+# Read the CSV file
+data <- read_csv("../data/CAINC4/CAINC4_MN_1969_2022.csv")
+
+
+# Display the first few rows
+head(data)
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+# Check the structure of the dataset (column names, types, etc.)
+str(data)
+
+# Get a summary of the dataset (min, max, mean for numerical columns)
+summary(data)
+
+# Check for any missing values in the dataset
+colSums(is.na(data))
+
+```
+
+```{r}
+unique(data$Description)
+```
+
+```{r}
+# Filter for Personal income and Per capita personal income
+filtered_data <- data[data$Description %in% c("Personal income (thousands of dollars)", "Per capita personal income (dollars) 4/"), ]
+
+
+
+# Display the structure of the filtered dataset
+str(filtered_data)
+
+# View the first few rows of the filtered dataset
+head(filtered_data)
+```
+
+```{r}
+# Remove the specified columns from the dataset
+filtered_data <- filtered_data[, !(names(filtered_data) %in% c("Region", "LineCode", "TableName", "IndustryClassification", "Unit"))]
+
+# Display the structure of the updated dataset to verify the changes
+str(filtered_data)
+
+# View the first few rows of the cleaned dataset
+head(filtered_data)
+```
+
+```{r}
+# Remove rows with NA values
+filtered_data <- na.omit(filtered_data)
+
+# Display the structure of the cleaned dataset to verify
+str(filtered_data)
+
+# View the first few rows of the cleaned dataset
+head(filtered_data)
+```
