@@ -1,0 +1,27 @@
+---
+title: "yosephine_datacleaning"
+format: html
+editor: visual
+---
+
+### Cleaning Data
+
+1. cc-est2019-alldata-27.csv
+```{r}
+demographic_all <- read.csv("../data/cc-est2019-alldata-27.csv")
+head(demographic_all)
+```
+
+```{r}
+demographic_all <- demographic_all %>%
+  mutate(White = WA_MALE + WA_FEMALE,
+         Black = BA_MALE + BA_FEMALE,
+         Hispanic = H_MALE + H_FEMALE,
+         Indian_Alaska = IA_MALE + IA_FEMALE,
+         Asian = AA_MALE + AA_FEMALE,
+         Hawaiian_PI = NA_MALE + NA_FEMALE,
+         Two_or_more = TOM_MALE + TOM_FEMALE)
+
+demographic_all
+```
+
