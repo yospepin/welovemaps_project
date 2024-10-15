@@ -1,0 +1,55 @@
+---
+title: "data_cleaning"
+format: html
+editor: visual
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(stringr)
+```
+
+# data loading
+
+```{r}
+age_sex <- read.csv("data_files/data/cc-est2019-agesex-27.csv")
+```
+
+
+# Summary
+```{r}
+summary(age_sex)
+```
+
+
+
+# Cleaning
+- Delete 'STATE', 'SUMLEV', 'STNAME', variable, 
+- Rename columns to match pivoting
+- Pivot longer
+
+```{r}
+new_ageSex <- age_sex %>% 
+  select(!c(STNAME, SUMLEV, STATE)) %>% 
+  rename_with(.cols = starts_with("MEDIAN"), .fn = function(x){str_replace(x, "_", ".")}) %>% 
+  rename("POPEST_TOT" = "POPESTIMATE") %>% 
+  pivot_longer(
+    cols = !(COUNTY:YEAR),
+    names_to = c("genre", ".value"),
+    names_sep = "_",
+    values_drop_na = TRUE
+  ) 
+head(new_ageSex, 20)
+
+```
+
+
+
+
+
+
+
+
