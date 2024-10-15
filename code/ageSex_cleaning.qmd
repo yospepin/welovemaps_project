@@ -12,24 +12,23 @@ library(ggplot2)
 library(stringr)
 ```
 
-# data loading
+## data loading
 
 ```{r}
 age_sex <- read.csv("data_files/data/cc-est2019-agesex-27.csv")
 ```
 
+## Summary
 
-# Summary
 ```{r}
 summary(age_sex)
 ```
 
+## Cleaning
 
-
-# Cleaning
-- Delete 'STATE', 'SUMLEV', 'STNAME', variable, 
-- Rename columns to match pivoting
-- Pivot longer
+-   Delete 'STATE', 'SUMLEV', 'STNAME', variable,
+-   Rename columns to match pivoting
+-   Pivot longer
 
 ```{r}
 new_ageSex <- age_sex %>% 
@@ -47,6 +46,9 @@ head(new_ageSex, 20)
 ```
 
 
+## Write up for Milestone 
+
+Our data set on age demographics (ageSex) was cleaned mainly by applying the pivot longer function to it, to make it easier to observe trends. Having the data set in this format, we can plot and observe trends, over the period of years in the dataset, in the changes in population by age, for the different genders. This could greatly contribute to our research question about the changes in income in relation to changes in demographics in MN counties over the years. This dataset could be (but surely won't happen) joined to our income dataset by counties, and the relation between growth in population and income could be modeled or observed. Given that all our datasets have MN county name, we could in the long run join them according to different needs that may arise, as well as join them to spatial data set to geographically observe the trends we found.  
 
 
 
