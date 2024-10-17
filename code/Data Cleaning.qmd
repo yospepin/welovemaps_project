@@ -51,6 +51,7 @@ str(filtered_data)
 
 head(filtered_data)
 ```
+
 ```{r}
 library(ggplot2)
 library(dplyr)
@@ -80,4 +81,5 @@ ggplot(df_mn_long, aes(x = Year, y = Income)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
   scale_y_continuous(labels = scales::comma)  
 ```
+
 For further pursuing my 2-3 broad questions, I plan to refine and potentially revise these questions based on my initial findings and feedback. In the next few weeks, I will focus on deepening my understanding of the dataset by gathering additional context from journal articles and relevant news sources to better interpret trends and patterns. If the current dataset doesn't fully address my questions, I will explore supplementary datasets that could enhance the analysis. I aim to conduct preliminary analyses, generate visualizations, and begin drafting the narrative for my blog. This plan allows time for incorporating feedback, ensuring a cohesive data story for Milestone 3.

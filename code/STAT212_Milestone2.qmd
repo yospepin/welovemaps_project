@@ -8,13 +8,151 @@ format:
 
 TO-DO:
 
-* In a Milestone2.qmd file, complete the steps in your plan from Milestone 1 (the plan with feedback from the instructional team).
+-   In a Milestone2.qmd file, complete the steps in your plan from Milestone 1 (the plan with feedback from the instructional team).
 
-* At the bottom of Milestone2.qmd, write a plan for further pursuing your 2-3 broad questions. Make sure that the steps in this plan are reasonable to complete in the next few weeks for Milestone 3 (which involves writing a short blog with initial data story (your results so far). You will receive feedback on this plan and will be expected to integrate this feedback for Milestone 3. Questions to think about as you develop this plan:
+-   At the bottom of Milestone2.qmd, write a plan for further pursuing your 2-3 broad questions. Make sure that the steps in this plan are reasonable to complete in the next few weeks for Milestone 3 (which involves writing a short blog with initial data story (your results so far). You will receive feedback on this plan and will be expected to integrate this feedback for Milestone 3. Questions to think about as you develop this plan:
 
-Do your 2-3 original broad questions need to be revised?
-What additional information and context (news articles, journal articles, expert interview, etc.) do you need to understand the data?
-Is it time to start looking for additional datasets?
+Do your 2-3 original broad questions need to be revised? What additional information and context (news articles, journal articles, expert interview, etc.) do you need to understand the data? Is it time to start looking for additional datasets?
+
+## Data Cleaning
+
+```{r}
+library(readr)
+data <- read_csv("../data/CAINC4/CAINC4_MN_1969_2022.csv")
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+str(data)
+summary(data)
+colSums(is.na(data))
+unique(data$Description)
+```
+
+```{r}
+# Filter for Personal income and Per capita personal income
+filtered_data <- data[data$Description %in% c("Personal income (thousands of dollars)", "Per capita personal income (dollars) 4/"), ]
+str(filtered_data)
+head(filtered_data)
+```
+
+```{r}
+# Remove columns from the dataset
+filtered_data <- filtered_data[, !(names(filtered_data) %in% c("Region", "LineCode", "TableName", "IndustryClassification", "Unit"))]
+str(filtered_data)
+head(filtered_data)
+```
+
+```{r}
+# Remove rows with NA values
+filtered_data <- na.omit(filtered_data)
+str(filtered_data)
+head(filtered_data)
+```
+
+```{r}
+library(dplyr)
+demographic_all <- read.csv("../data/cc-est2019-alldata-27.csv")
+head(demographic_all)
+```
+
+```{r}
+demographic_all <- demographic_all %>%
+  mutate(White = WA_MALE + WA_FEMALE,
+         Black = BA_MALE + BA_FEMALE,
+         Hispanic = H_MALE + H_FEMALE,
+         Indian_Alaska = IA_MALE + IA_FEMALE,
+         Asian = AA_MALE + AA_FEMALE,
+         Hawaiian_PI = NA_MALE + NA_FEMALE,
+         Two_or_more = TOM_MALE + TOM_FEMALE)
+
+demographic_all <- demographic_all %>% 
+  select(STATE, COUNTY, CTYNAME, YEAR, TOT_POP, TOT_MALE, TOT_FEMALE, White, Black, Hispanic, Indian_Alaska, Asian, Hawaiian_PI, Two_or_more)
+
+demographic_all
+```
+
+```{r}
+age_sex <- read.csv("../data/cc-est2019-agesex-27.csv")
+```
+
+-   Delete 'STATE', 'SUMLEV', 'STNAME', variable,
+-   Rename columns to match pivoting
+-   Pivot longer
+
+```{r}
+library(stringr)
+new_ageSex <- age_sex %>% 
+  select(!c(STNAME, SUMLEV, STATE)) %>% 
+  rename_with(.cols = starts_with("MEDIAN"), .fn = function(x){str_replace(x, "_", ".")}) %>% 
+  rename("POPEST_TOT" = "POPESTIMATE") %>% 
+  pivot_longer(
+    cols = !(COUNTY:YEAR),
+    names_to = c("genre", ".value"),
+    names_sep = "_",
+    values_drop_na = TRUE
+  ) 
+head(new_ageSex, 20)
+
+```
+
+```{r}
+age_sex <- read.csv("data_files/data/cc-est2019-agesex-27.csv")
+```
+
+-   Delete 'STATE', 'SUMLEV', 'STNAME', variable,
+-   Rename columns to match pivoting
+-   Pivot longer
+
+```{r}
+new_ageSex <- age_sex %>% 
+  select(!c(STNAME, SUMLEV, STATE)) %>% 
+  rename_with(.cols = starts_with("MEDIAN"), .fn = function(x){str_replace(x, "_", ".")}) %>% 
+  rename("POPEST_TOT" = "POPESTIMATE") %>% 
+  pivot_longer(
+    cols = !(COUNTY:YEAR),
+    names_to = c("genre", ".value"),
+    names_sep = "_",
+    values_drop_na = TRUE
+  ) 
+head(new_ageSex, 20)
+
+```
+
+## Simple Visualizatioh
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(scales)
+
+# Minnesota and Personal income
+df_mn <- filtered_data %>%
+  filter(Description == "Personal income (thousands of dollars)" & GeoName == "Minnesota")
+
+# wide to long format
+df_mn_long <- df_mn %>%
+  pivot_longer(cols = starts_with("19"),  # Select columns for the years (e.g., 1969, 1970, etc.)
+               names_to = "Year",         # Column to store the years
+               values_to = "Income")      # Column to store the income values
+
+# 'Year' to numeric
+df_mn_long$Year <- as.numeric(df_mn_long$Year)
+
+#standard notation for the y-axis
+ggplot(df_mn_long, aes(x = Year, y = Income)) +
+  geom_line(color = "blue", size = 1) +
+  labs(title = "Personal Income Over Time in Minnesota",
+       x = "Year",
+       y = "Personal Income (Thousands of Dollars)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
+  scale_y_continuous(labels = scales::comma)  
+```
+
+## Write up
+
+Our data set on age demographics (ageSex) was cleaned mainly by applying the pivot longer function to it, to make it easier to observe trends. Having the data set in this format, we can plot and observe trends, over the period of years in the dataset, in the changes in population by age, for the different genders. This could greatly contribute to our research question about the changes in income in relation to changes in demographics in MN counties over the years. This dataset could be (but surely won't happen) joined to our income dataset by counties, and the relation between growth in population and income could be modeled or observed. Given that all our datasets have MN county name, we could in the long run join them according to different needs that may arise, as well as join them to spatial data set to geographically observe the trends we found.
 
 ```{r}
 sessionInfo()
