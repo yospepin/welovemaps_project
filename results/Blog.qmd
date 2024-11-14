@@ -48,3 +48,70 @@ These findings may suggest that while there is a correlation between changes in 
 Although these findings provide insightful information, there are still limits. Not all possible impacting factors are included in the dataset, such as migration patterns or economic shifts unique to a given industry, which may give these trends more perspective. Furthermore, even though correlations can be shown, this data alone cannot definitively prove causal relationships.   Furthermore, concentrating on data from 2012 to 2022 may miss long-term causes or economic shocks that could have an impact on income trajectories, but it does capture recent developments. Cautious ethical handling is needed when analyzing income in relation to socioeconomic characteristics, race, and ethnicity in this study. When demographic information is presented with income statistics, stereotypes run the risk of being reinforced. When analyzing data, care must be given to identify systemic variables that contribute to income disparities rather than blaming variances solely on demographic traits.
 
 Future studies should use more data and approaches to build on these conclusions. A more thorough picture of how demographic shifts affect locals' economic experiences may be obtained by collecting qualitative information at the community level through surveys or interviews. Policymakers should assess the effectiveness of initiatives meant to lessen income disparity by tracking improvements over time with a longer-term study of these demographics and income patterns.
+
+Preliminary Viz Example:
+
+Below we can find the map of Minnesota counties showing the per capita income in 2010 and 2019. The map shows the disparities in income levels across the state, with darker colors indicating higher income levels. The visualization helps to identify areas where income growth has been more pronounced and areas where income levels have stagnated. 
+
+We still need to recalibrate our data to account for the inflation rate and other economic factors that may have influenced income levels over the years. This will provide a more accurate picture of how income has changed in Minnesota counties over the past decade.
+
+
+```{r}
+library(sf)
+library(ggplot2)
+library(dplyr)
+library(tigris)
+library(viridis)
+library(stringr)
+```
+```{r}
+library(readr)
+data <- read_csv("../data/CAINC4/CAINC4_MN_1969_2022.csv")
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+str(data)
+summary(data)
+colSums(is.na(data))
+unique(data$Description)
+```
+
+```{r}
+filtered_data <- data[data$Description %in% c("Personal income (thousands of dollars)", "Per capita personal income (dollars) 4/"), ]
+filtered_data <- filtered_data[, !(names(filtered_data) %in% c("Region", "LineCode", "TableName", "IndustryClassification", "Unit"))]
+filtered_data <- na.omit(filtered_data)
+```
+
+```{r, include=FALSE}
+income_data <- filtered_data %>%
+  select("GeoName","GeoFIPS", "2010", "2019") %>%
+  filter(filtered_data$Description == "Per capita personal income (dollars) 4/") %>% 
+  mutate(NAME = str_remove(GeoName, ", MN$"))
+
+
+mn_counties <- counties(state = "MN", cb = TRUE, class = "sf")
+
+mn_map_data <- mn_counties %>%
+  mutate(COUNTY = as.numeric(GEOID)) %>%
+  left_join(income_data, by = "NAME")
+```
+```{r}
+
+map_2010 <- ggplot(data = mn_map_data) +
+  geom_sf(aes(fill = `2010`)) +
+  scale_fill_viridis_c(option = "magma", name = "Income per Capita (2010)") +
+  labs(title = "Per Capita Income in Minnesota Counties (2010)") +
+  theme_minimal()
+
+map_2010
+```
+```{r}
+map_2019 <- ggplot(data = mn_map_data) +
+  geom_sf(aes(fill = `2019`)) +
+  scale_fill_viridis_c(option = "magma", name = "Income per Capita (2019)") +
+  labs(title = "Per Capita Income in Minnesota Counties (2019)") +
+  theme_minimal()
+
+map_2019
+```
+
