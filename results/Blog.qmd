@@ -1,0 +1,117 @@
+---
+title: "Blog Post"
+author: "Ellie, Yosephine, Iris"
+format: html
+editor: visual
+---
+
+## How Space Entrenches Inequality: The Geography of Wealth and Poverty in Minnesota
+
+Space and place actively influence access to resources, jobs, healthcare, and education rather than serving as a passive backdrop for economic activity. These spatial dynamics have the potential to perpetuate inequality since families in wealthier regions are better equipped to amass wealth, while those in lower-income neighborhoods encounter barriers to upward mobility. In Minnesota, like in many other US states, patterns of concentrated wealth and poverty presumably exist. Historical policies like redlining and exclusionary zoning have led to the clustering of racial minorities in lower-income communities, limiting access to homes in more affluent areas. Due to the long-lasting effects of these practices, many BIPOC populations are concentrated in underdeveloped areas with little access to economic alternatives. Furthermore, disparity in economic growth between rural and urban areas may lead to regional inequities, affecting everything from local economies to public services and infrastructure.
+
+### Objectives of This Study
+
+The aim of this study is to clarify these patterns in the present and offer data that could guide efforts to lessen economic inequality in the state. Mapping these areas can provide a visual understanding of how geographic disparity operates and persists by emphasizing the structural components of economic inequality. The project serves as a tool for decision-makers to encourage more equitable growth throughout Minnesota by highlighting the ways that changes in population composition affect economic results by tying demographic data with income trends. 
+
+### Research Focus: Key Questions Guiding the Study
+
+To conduct our analysis of income and demographic shifts in Minnesota, we refined our research scope with three guiding questions:
+
+1.  **How Do Racial and Ethnic Demographic Shifts Correlate with Income Changes?**
+
+    Economic gaps among racial and ethnic groups directly affect income levels and access to economic opportunities. This question aims to visualize these disparities by examining how shifts in racial and ethnic demographics align with income changes across Minnesota counties over the past decade. By doing so, we can highlight any economic challenges faced by diverse communities, providing insights for policies that promote inclusion and equity.
+
+2.  **How does income growth or decline vary across counties with significant changes in age, education levels, or household structures?**
+
+    Basic demographic characteristics that have a direct bearing on income potential, employment stability, and economic mobility include age, education, and household composition. By concentrating on these factors, we can pinpoint certain socioeconomic trends at work in various counties. For instance, counties with a higher proportion of younger or older citizens, as well as those with different family or educational makeups, may experience particular economic difficulties. By highlighting key demographics that may be especially impacted by changes in the economy, this question enables us to investigate the relationship between changes in these characteristics and trends in income. We can gain a better understanding of the economic resiliency of various populations in Minnesota by focusing on these issues.
+
+3.  **How have rural vs. urban counties in Minnesota been affected by demographic changes in relation to income distribution?**
+
+    Like many other states, Minnesota has clear economic differences between its rural and urban regions. In order to determine whether rural and urban counties face comparable or dissimilar economic trends, this question focuses on how demographic changes affect income differently across these locations. Our goal is to determine if the effects of demographic shifts are exacerbated or lessened based on regional features by separating rural and urban counties.
+
+### Mapping the Patterns: Visualization Strategy
+
+Plotting income trends alongside population changes in important racial and ethnic groupings will help us better understand how changes in these demographics relate to changes in income. Line plots will be used, for instance, to display the income growth paths of counties where the proportion of Asian, African American, or Hispanic people has significantly increased. We will examine whether income levels increased at a comparable, slower, or faster rate in counties with higher proportions of these groups than in counties with less demographic change.
+
+Additionally, a choropleth map will be used, in which counties or neighborhoods are shaded based on median income levels. Brighter colors may signify lower income levels, whereas darker colors may imply greater income levels. After that, ideally, a layer or filter displaying racial composition will be enabled (e.g., percentage of White, Black, Hispanic, and Asian people). This enables viewers to see the areas where racial demography and concentrated wealth coincide.
+
+## Key Findings and Policy Implications
+
+These findings may suggest that while there is a correlation between changes in the population and changes in income, the effects differ greatly depending on racial/ethnic groups, educational attainment, family configurations, and geographic classifications. Important lessons learned could be:
+
+-   Counties experiencing growth in diverse racial/ethnic populations may require policies that support economic inclusion to avoid income stagnation.
+
+-   Education remains a crucial lever for economic resilience, reinforcing the importance of accessible educational opportunities across all counties.
+
+-   Rural counties facing demographic declines may need targeted economic development initiatives to counteract income volatility and potential disparities compared to urban counterparts.
+
+Although these findings provide insightful information, there are still limits. Not all possible impacting factors are included in the dataset, such as migration patterns or economic shifts unique to a given industry, which may give these trends more perspective. Furthermore, even though correlations can be shown, this data alone cannot definitively prove causal relationships.   Furthermore, concentrating on data from 2012 to 2022 may miss long-term causes or economic shocks that could have an impact on income trajectories, but it does capture recent developments. Cautious ethical handling is needed when analyzing income in relation to socioeconomic characteristics, race, and ethnicity in this study. When demographic information is presented with income statistics, stereotypes run the risk of being reinforced. When analyzing data, care must be given to identify systemic variables that contribute to income disparities rather than blaming variances solely on demographic traits.
+
+Future studies should use more data and approaches to build on these conclusions. A more thorough picture of how demographic shifts affect locals' economic experiences may be obtained by collecting qualitative information at the community level through surveys or interviews. Policymakers should assess the effectiveness of initiatives meant to lessen income disparity by tracking improvements over time with a longer-term study of these demographics and income patterns.
+
+Preliminary Viz Example:
+
+Below we can find the map of Minnesota counties showing the per capita income in 2010 and 2019. The map shows the disparities in income levels across the state, with darker colors indicating higher income levels. The visualization helps to identify areas where income growth has been more pronounced and areas where income levels have stagnated. 
+
+We still need to recalibrate our data to account for the inflation rate and other economic factors that may have influenced income levels over the years. This will provide a more accurate picture of how income has changed in Minnesota counties over the past decade.
+
+
+```{r}
+library(sf)
+library(ggplot2)
+library(dplyr)
+library(tigris)
+library(viridis)
+library(stringr)
+```
+```{r}
+library(readr)
+data <- read_csv("../data/CAINC4/CAINC4_MN_1969_2022.csv")
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+str(data)
+summary(data)
+colSums(is.na(data))
+unique(data$Description)
+```
+
+```{r}
+filtered_data <- data[data$Description %in% c("Personal income (thousands of dollars)", "Per capita personal income (dollars) 4/"), ]
+filtered_data <- filtered_data[, !(names(filtered_data) %in% c("Region", "LineCode", "TableName", "IndustryClassification", "Unit"))]
+filtered_data <- na.omit(filtered_data)
+```
+
+```{r, include=FALSE}
+income_data <- filtered_data %>%
+  select("GeoName","GeoFIPS", "2010", "2019") %>%
+  filter(filtered_data$Description == "Per capita personal income (dollars) 4/") %>% 
+  mutate(NAME = str_remove(GeoName, ", MN$"))
+
+
+mn_counties <- counties(state = "MN", cb = TRUE, class = "sf")
+
+mn_map_data <- mn_counties %>%
+  mutate(COUNTY = as.numeric(GEOID)) %>%
+  left_join(income_data, by = "NAME")
+```
+```{r}
+
+map_2010 <- ggplot(data = mn_map_data) +
+  geom_sf(aes(fill = `2010`)) +
+  scale_fill_viridis_c(option = "magma", name = "Income per Capita (2010)") +
+  labs(title = "Per Capita Income in Minnesota Counties (2010)") +
+  theme_minimal()
+
+map_2010
+```
+```{r}
+map_2019 <- ggplot(data = mn_map_data) +
+  geom_sf(aes(fill = `2019`)) +
+  scale_fill_viridis_c(option = "magma", name = "Income per Capita (2019)") +
+  labs(title = "Per Capita Income in Minnesota Counties (2019)") +
+  theme_minimal()
+
+map_2019
+```
+

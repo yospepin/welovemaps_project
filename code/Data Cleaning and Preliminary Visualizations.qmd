@@ -1,0 +1,208 @@
+---
+title: "Data Cleaning/Preliminary Visualizations"
+format: html
+editor: visual
+---
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(USAboundaries)
+library(tidyr)
+library(scales)
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+#read in data
+data <- read_csv("../data/CAINC4/CAINC4_MN_1969_2022.csv")
+
+head(data)
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+str(data)
+
+summary(data)
+
+colSums(is.na(data))
+
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+unique(data$Description)
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+# Filter for Per capita personal income
+
+filtered_data <- data[data$Description %in% c("Per capita personal income (dollars) 4/"), ]
+filtered_data <- filtered_data[filtered_data$GeoName != "Minnesota", ]
+
+str(filtered_data)
+
+head(filtered_data)
+
+colnames(filtered_data)
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+filtered_data <- filtered_data %>% select("GeoFIPS", "GeoName", "Region", "TableName", "LineCode", "Description", "Unit", contains("2012"), contains("2013"), contains("2014"), contains("2015"), contains("2016"), contains("2017"), contains("2018"), contains("2019"), contains("2020"), contains("2021"), contains("2022"))
+
+head(filtered_data)
+
+str(filtered_data)
+
+filtered_data
+```
+
+```{r}
+filtered_data_long <- filtered_data %>%
+  pivot_longer(cols = starts_with("20"), names_to = "Year", values_to = "Income") %>%
+  mutate(Year = as.numeric(Year))
+
+ggplot(filtered_data_long, aes(x = as.factor(Year), y = Income)) +
+  geom_boxplot() +
+  scale_y_continuous(labels = comma) +  # Use comma format for standard notation
+  labs(title = "Box Plot of Income by Year (2012-2022)",
+       x = "Year",
+       y = "Income") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+# Remove rows with NA values
+filtered_data <- na.omit(filtered_data)
+
+str(filtered_data)
+
+head(filtered_data)
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+
+cpi_data <- data.frame(
+  Year = 2012:2022,
+  CPI = c(229.6, 233.0, 236.7, 237.0, 240.0, 245.1, 251.1, 255.7, 258.8, 271.0, 292.7) 
+)
+
+# Set base year for CPI adjustment (2022)
+base_year <- 2022
+cpi_base <- cpi_data %>% filter(Year == base_year) %>% pull(CPI)
+
+# Adjust each year from 2012 to 2022 based on CPI
+adjusted_data <- filtered_data %>%
+  mutate(across(starts_with("20"), 
+                ~ . * cpi_base / cpi_data %>% filter(Year == as.numeric(substring(cur_column(), 1, 4))) %>% pull(CPI),
+                .names = "Real_{col}"))
+
+# Display the first few rows of the adjusted data
+head(adjusted_data)
+```
+
+```{r}
+adjusted_data_long <- adjusted_data %>%
+  pivot_longer(cols = starts_with("Real_"), 
+               names_to = "Year", 
+               values_to = "Income") %>%
+  mutate(Year = as.numeric(sub("Real_", "", Year)))
+
+ggplot(adjusted_data_long, aes(x = as.factor(Year), y = Income)) +
+  geom_boxplot() +
+  scale_y_continuous(labels = comma) +  # Format y-axis labels with commas
+  labs(title = "Box Plot of Real Per Capita Income by Year (2012-2022, Adjusted)",
+       x = "Year",
+       y = "Income (Adjusted to 2022 Dollars)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+# Example CPI-adjusted data for one year (Real_2022)
+adjusted_data_for_join <- adjusted_data %>%
+  select(GeoFIPS, GeoName, Real_2012, Real_2013, Real_2014, Real_2015, Real_2016, Real_2017, Real_2018, Real_2019, Real_2020, Real_2021, Real_2022)
+
+
+# Load Minnesota county boundaries using USAboundaries
+mn_counties <- USAboundaries::us_counties(resolution = "high", states = "Minnesota")
+
+mn_counties <- mn_counties %>%
+  select(-one_of("state_name"))
+
+# Join the income data with county boundaries on `GeoFIPS`
+mn_income_map <- mn_counties %>%
+  left_join(adjusted_data_for_join, by = c("geoid" = "GeoFIPS"))
+
+mn_income_map
+```
+
+```{r}
+# Plot Minnesota counties colored by real per capita income for 2022
+ggplot(mn_income_map) +
+  geom_sf(aes(fill = Real_2022), color = "black") +
+  scale_fill_viridis_c(option = "viridis", labels = comma, na.value = "gray80") +
+  labs(title = "Real Per Capita Income by County in Minnesota (2022 (Adjusted to 2022 Dollars))",
+       fill = "Income ($)") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(mn_income_map) +
+  geom_sf(aes(fill = Real_2012), color = "black") +
+  scale_fill_viridis_c(option = "viridis", labels = comma, na.value = "gray80") +
+  labs(title = "Real Per Capita Income by County in Minnesota (2012 (Adjusted to 2022 Dollars)",
+       fill = "Income ($)") +
+  theme_minimal()
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+
+# Reshape adjusted_data to a long format for faceting
+adjusted_data_long <- adjusted_data_for_join %>%
+  pivot_longer(cols = starts_with("Real_"), 
+               names_to = "Year", 
+               values_to = "Income") %>%
+  mutate(Year = as.numeric(sub("Real_", "", Year)))  # Extract year as a numeric value
+
+# Join the long-form data with spatial data
+# Join the income data with county boundaries on `GeoFIPS`
+mn_income_map <- mn_counties %>%
+  left_join(adjusted_data_long, by = c("geoid" = "GeoFIPS"))
+```
+
+```{r plot_maps, fig.width=18, fig.height=15}
+ggplot(mn_income_map) +
+  geom_sf(aes(fill = Income), color = "black") +
+  scale_fill_viridis_c(option = "viridis", labels = comma, na.value = "gray80") +
+  labs(title = "Real Per Capita Income by County in Minnesota (2012 - 2022 (Adjusted to 2022 dollars))",
+       fill = "Income (Thousands of $)") +
+  facet_wrap(~ Year, ncol = 3) +  # Adjust ncol for layout preference
+  theme_minimal() +
+  theme(
+    panel.spacing = unit(1, "lines"),  # Adds spacing between facets
+    axis.text = element_blank(),       # Removes latitude and longitude labels
+    axis.ticks = element_blank()       # Removes axis ticks
+  )
+
+```
+
+1.  What is the visualization showing?
+
+    The visualization displays a series of maps showing real per capita income by county in Minnesota from 2012 to 2022. Each map represents a single year and is color-coded to indicate income levels, adjusted to account for inflation (i.e., values are in 2022 dollars). The layout allows for year-by-year comparison of income distributions across Minnesota counties.
+
+2.  What are the main insights from this visualization?
+
+    The color gradients show changes in real per capita income over the years, revealing trends in income growth or stagnation across counties. Counties with consistently high or low income levels stand out due to their consistent color across years. Some counties may appear consistently wealthier or less affluent, indicated by a consistently darker or lighter color across years. This can highlight regional economic disparities within the state. By observing how colors change for a given county from 2012 to 2022, one can identify broader economic trends, such as growth in certain areas or stagnation in others. For example, counties that shift from lighter to darker colors over time indicate increasing income levels relative to other counties.
+
+3.  What are the limitations of this visualization?
+
+    Color gradients, while useful, may not clearly convey small differences in income between counties, especially for viewers with color vision deficiencies.
+
+    With multiple maps in a single view, tracking changes for specific counties across years can be challenging, especially if the viewer needs to examine each county’s trend individually.

@@ -1,0 +1,133 @@
+---
+title: "STAT212_Milestone4"
+author: "Yosephine"
+format: 
+  html:
+    embed-resources: true
+---
+## Data Cleaning
+
+```{r}
+library(readr)
+data <- read_csv("../data/CAINC4/CAINC4_MN_1969_2022.csv")
+```
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+str(data)
+summary(data)
+colSums(is.na(data))
+unique(data$Description)
+```
+
+```{r}
+# Filter for Personal income and Per capita personal income
+filtered_data <- data[data$Description %in% c("Personal income (thousands of dollars)", "Per capita personal income (dollars) 4/"), ]
+str(filtered_data)
+head(filtered_data)
+```
+
+```{r}
+# Remove columns from the dataset
+filtered_data <- filtered_data[, !(names(filtered_data) %in% c("Region", "LineCode", "TableName", "IndustryClassification", "Unit"))]
+str(filtered_data)
+head(filtered_data)
+```
+
+```{r}
+# Remove rows with NA values
+filtered_data <- na.omit(filtered_data)
+str(filtered_data)
+head(filtered_data)
+```
+
+```{r}
+library(dplyr)
+demographic_all <- read.csv("../data/cc-est2019-alldata-27.csv")
+head(demographic_all)
+```
+
+```{r}
+demographic_all <- demographic_all %>%
+  filter(AGEGRP == 0) %>% 
+  mutate(White = WA_MALE + WA_FEMALE,
+         Black = BA_MALE + BA_FEMALE,
+         Hispanic = H_MALE + H_FEMALE,
+         Indian_Alaska = IA_MALE + IA_FEMALE,
+         Asian = AA_MALE + AA_FEMALE,
+         Hawaiian_PI = NA_MALE + NA_FEMALE,
+         Two_or_more = TOM_MALE + TOM_FEMALE)
+
+demographic_all <- demographic_all %>% 
+  select(STATE, COUNTY, CTYNAME, YEAR, TOT_POP, TOT_MALE, TOT_FEMALE, White, Black, Hispanic, Indian_Alaska, Asian, Hawaiian_PI, Two_or_more)
+
+demographic_all <- demographic_all %>% 
+  filter(YEAR != 1 & YEAR != 2) %>% 
+  mutate(YEAR = YEAR + 2007) %>%
+  mutate(CTYNAME = str_remove(CTYNAME, " County"))
+  
+
+demographic_all
+```
+
+```{r}
+age_sex <- read.csv("../data/cc-est2019-agesex-27.csv")
+```
+
+-   Delete 'STATE', 'SUMLEV', 'STNAME', variable,
+-   Rename columns to match pivoting
+-   Pivot longer
+
+```{r}
+library(stringr)
+new_ageSex <- age_sex %>% 
+  select(!c(STNAME, SUMLEV, STATE)) %>% 
+  rename_with(.cols = starts_with("MEDIAN"), .fn = function(x){str_replace(x, "_", ".")}) %>% 
+  rename("POPEST_TOT" = "POPESTIMATE") %>% 
+  pivot_longer(
+    cols = !(COUNTY:YEAR),
+    names_to = c("genre", ".value"),
+    names_sep = "_",
+    values_drop_na = TRUE
+  ) 
+head(new_ageSex, 20)
+
+```
+```{r}
+age_sex_filtered <- age_sex %>% 
+  filter(YEAR != 1 & YEAR != 2) %>%
+  mutate(YEAR = YEAR + 2007) %>% 
+  mutate(CTYNAME = str_remove(CTYNAME, " County"))
+
+age_sex_filtered
+```
+```{r}
+filtered_data_20102019 <- filtered_data %>% 
+  filter(Description == "Per capita personal income (dollars) 4/") %>% 
+  select(GeoName, GeoFIPS, c("2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019"))
+
+filtered_data_long <- filtered_data_20102019 %>%
+  pivot_longer(cols = starts_with("20"), 
+               names_to = "YEAR", 
+               values_to = "Income per capita") %>%
+  mutate(YEAR = as.integer(YEAR)) %>% 
+  filter(GeoName != "Minnesota") %>% 
+  mutate(GeoName = str_remove(GeoName, ", MN$"))
+```
+```{r}
+merged_data <- left_join(filtered_data_long, demographic_all, by = c("GeoName" = "CTYNAME", "YEAR" = "YEAR"))
+```
+```{r, include=FALSE}}
+library(tigris)
+
+mn_counties <- counties(state = "MN", cb = TRUE, class = "sf")
+mn_counties <- st_transform(mn_counties, crs = 4326) 
+
+mn_map_data <- mn_counties %>%
+  left_join(merged_data, by = c("NAME" = "GeoName"))
+```
+
+#save as rds file
+```{r}
+saveRDS(mn_map_data, "../data/mn_map_data.rds")
+```
+

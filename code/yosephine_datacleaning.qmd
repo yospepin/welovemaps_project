@@ -52,6 +52,4 @@ ggplot(demographic_all, aes(x = reorder(CTYNAME, -Population), y = Population, f
         axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-
 ### Next Step?
-
