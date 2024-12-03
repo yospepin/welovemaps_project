@@ -119,7 +119,6 @@ ggplot(adjusted_data_long, aes(x = as.factor(Year), y = Income)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-
 ```{r, include=FALSE, message=FALSE, warning=FALSE}
 # Example CPI-adjusted data for one year (Real_2022)
 adjusted_data_for_join <- adjusted_data %>%
@@ -178,18 +177,24 @@ mn_income_map <- mn_counties %>%
 ```
 
 ```{r plot_maps, fig.width=18, fig.height=15}
-ggplot(mn_income_map) +
+
+library(gganimate)
+p <- ggplot(mn_income_map) +
   geom_sf(aes(fill = Income), color = "black") +
   scale_fill_viridis_c(option = "viridis", labels = comma, na.value = "gray80") +
   labs(title = "Real Per Capita Income by County in Minnesota (2012 - 2022 (Adjusted to 2022 dollars))",
        fill = "Income (Thousands of $)") +
-  facet_wrap(~ Year, ncol = 3) +  # Adjust ncol for layout preference
+ # facet_wrap(~ Year, ncol = 3) +  # Adjust ncol for layout preference
+  #stat_sf_coordinates() + 
+  #transition_manual(year) +
   theme_minimal() +
   theme(
     panel.spacing = unit(1, "lines"),  # Adds spacing between facets
     axis.text = element_blank(),       # Removes latitude and longitude labels
     axis.ticks = element_blank()       # Removes axis ticks
   )
+
+p
 
 ```
 
@@ -206,3 +211,5 @@ ggplot(mn_income_map) +
     Color gradients, while useful, may not clearly convey small differences in income between counties, especially for viewers with color vision deficiencies.
 
     With multiple maps in a single view, tracking changes for specific counties across years can be challenging, especially if the viewer needs to examine each county’s trend individually.
+
+County leve email to briannsa

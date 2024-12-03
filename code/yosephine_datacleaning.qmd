@@ -40,7 +40,7 @@ mn_demographic_long <- demographic_all %>%
                values_to = "Population")
 
 # Plot the demographic breakdown for each county
-ggplot(demographic_all, aes(x = reorder(CTYNAME, -Population), y = Population, fill = Race)) +
+ggplot(mn_demographic_long, aes(x = reorder(CTYNAME, -Population), y = Population, fill = Race)) +
   geom_bar(stat = "identity") +
   coord_flip() +
   labs(title = "Demographic Breakdown by Race in Minnesota Counties",
