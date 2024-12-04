@@ -82,7 +82,7 @@ head(filtered_data)
 ```
 
 ```{r, include=FALSE, message=FALSE, warning=FALSE}
-
+#This is where the interest rate change is
 cpi_data <- data.frame(
   Year = 2012:2022,
   CPI = c(229.6, 233.0, 236.7, 237.0, 240.0, 245.1, 251.1, 255.7, 258.8, 271.0, 292.7) 
@@ -136,6 +136,7 @@ mn_income_map <- mn_counties %>%
   left_join(adjusted_data_for_join, by = c("geoid" = "GeoFIPS"))
 
 mn_income_map
+saveRDS(mn_income_map, "../data/mn_income_map.rds")
 ```
 
 ```{r}
