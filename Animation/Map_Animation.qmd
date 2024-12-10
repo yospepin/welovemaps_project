@@ -1,0 +1,62 @@
+---
+title: "GGAnimate_Map_Visual"
+format: html
+editor: visual
+---
+
+
+```{r}
+mn_income_map <- readRDS("data/mn_income_map.rds")
+```
+
+```{r}
+library(gganimate)
+library(ggplot2)
+library(viridis)
+library(scales)
+library(tidyr)
+library(dplyr)
+
+# Read the RDS file
+mn_income_map <- readRDS("data/mn_income_map.rds")
+
+
+# Reshape the non-spatial data
+mn_income_map_long <- mn_income_map %>%
+  st_drop_geometry() %>%  # Temporarily remove geometry
+  pivot_longer(
+    cols = starts_with("Real_"), 
+    names_to = "Year", 
+    values_to = "Income"
+  ) %>%
+  mutate(
+    Year = as.numeric(sub("Real_", "", Year))  # Convert Year to numeric
+  )
+
+
+# Combine geometry back with reshaped data
+mn_income_map_long <- left_join(mn_income_map %>% select(geoid), mn_income_map_long)
+
+# Create the plot using the reshaped data
+p <- ggplot(mn_income_map_long) +
+  geom_sf(aes(fill = Income), color = "black") +
+  scale_fill_viridis_c(option = "viridis", labels = comma, na.value = "gray80") +
+  labs(
+    title = "Real Per Capita Income by County in Minnesota: {round(frame_time)}",
+    subtitle = "Adjusted to 2022 dollars",
+    fill = "Income (Thousands of $)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right"
+  ) +
+  transition_time(Year) +  # Animate based on the Year column
+  ease_aes('linear')  # Smooth transitions
+
+# Render the animation
+anim <- animate(p, nframes = 100, fps = 10, width = 800, height = 600,renderer = gifski_renderer())
+anim_save(filename = 'mapanimate.gif', animation=anim)
+```
