@@ -4,7 +4,6 @@ format: html
 editor: visual
 ---
 
-
 ```{r}
 mn_income_map <- readRDS("data/mn_income_map.rds")
 ```
