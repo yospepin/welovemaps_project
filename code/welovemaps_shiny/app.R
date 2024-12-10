@@ -26,19 +26,39 @@ minnesota_counties <- counties(state = "MN", cb = TRUE, class = "sf")
 
 ui <- fluidPage(
   titlePanel("Minnesota Counties: Income and Racial Makeup Over Time"),
+  tabsetPanel(
+    tabPanel("Introduction",
+             p("This app allows you to explore income and racial demographics in Minnesota counties over time. In the Couny-Level Analysis tab, you can click on a county to view income and racial demographics over time.
+               However, upon further considerations, we decided to zoom in to the tract level analysis for urban areas of Minnesota, because we believe that tract level analysis will provide more insights to our research 
+               question of recognizing pattern of gentrification in urban areas of Minnesota. In the Tract-Level Analysis tab, you can click on a tract to view income and racial demographics over time.")),
+    tabPanel("County-Level Analysis",
+             sidebarLayout(
+               sidebarPanel(
+                 p("Click on a county to view income and racial demographics over time.")
+               ),
+               mainPanel(
+                 leafletOutput("countyMap"),
+                 h3("Income Trends"),
+                 plotOutput("incomePlot"),
+                 h3("Racial Makeup Trends"),
+                 plotOutput("racePlot")
+               ))),
+    tabPanel("Tract-Level Analysis",
+             sidebarLayout(
+               sidebarPanel(
+                 p("Click on a tract to view income and racial demographics over time.")
+               ),
+               mainPanel(
+                 leafletOutput("tractMap"),
+                 h3("Income Trends"),
+                 plotOutput("tract_incomePlot"),
+                 h3("Racial Makeup Trends"),
+                 plotOutput("tract_racePlot")
+               )))
   
-  sidebarLayout(
-    sidebarPanel(
-      p("Click on a county to view income and racial demographics over time.")
-    ),
+  
     
-    mainPanel(
-      leafletOutput("countyMap"),
-      h3("Income Trends"),
-      plotOutput("incomePlot"),
-      h3("Racial Makeup Trends"),
-      plotOutput("racePlot")
-    )
+   
   )
 )
 
@@ -107,5 +127,9 @@ server <- function(input, output, session) {
           color = "Legend") +
      theme_minimal()
   })
+  
+  # output$tractMap
+  # output$tract_incomePlot
+  # output$tract_racePlot
 }
 shinyApp(ui = ui, server = server)
