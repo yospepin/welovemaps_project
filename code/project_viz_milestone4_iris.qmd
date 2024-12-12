@@ -5,13 +5,12 @@ editor: visual
 ---
 
 ```{r}
-data <- read_csv("CAINC4_MN_1969_2022.csv")
-demographic_all <- read.csv("cc-est2019-alldata-27.csv")
+data <- read_csv("../../CAINC4_MN_1969_2022.csv")   #importing income dataset
+demographic_all <- read.csv("../../cc-est2019-alldata-27.csv")   #importing demographic dataset
 head(demographic_all)
 
 demographic_all %>% group_by(COUNTY, CTYNAME) %>% summarize(count = n())
 ```
-
 
 ## Data viz
 
@@ -26,6 +25,8 @@ demographic_all %>% group_by(COUNTY, CTYNAME) %>% summarize(count = n())
 -   population (Number of persons)
 
 ```{r}
+
+# Cleaning the income dataset using Ellie's code, and leaving variables 
 filtered_data <- data[data$Description %in% c("Personal income (thousands of dollars)", "Per capita personal income (dollars) 4/", "Wages and salaries", "Nonfarm personal income 1/", "Farm income 2/", "Total employment", "Population (persons) 3/"), ]
 filtered_data <- filtered_data[, !(names(filtered_data) %in% c("Region", "LineCode", "TableName", "Unit", "IndustryClassification"))]
 filtered_data <- na.omit(filtered_data)
@@ -53,7 +54,6 @@ income_year %>% head()
 
 ```
 
-
 ```{r}
 # Combining male and female demographics
 demographic_all <- demographic_all %>%
@@ -65,39 +65,23 @@ demographic_all <- demographic_all %>%
          Hawaiian_PI = NA_MALE + NA_FEMALE,
          Two_or_more = TOM_MALE + TOM_FEMALE)
 
-
+# selecting important variables
 demographic_all <- demographic_all %>% 
-  select(STATE, COUNTY, CTYNAME, YEAR, TOT_POP, TOT_MALE, TOT_FEMALE, White, Black, Hispanic, Indian_Alaska, Asian, Hawaiian_PI, Two_or_more)
+  select(STATE, COUNTY, CTYNAME, YEAR, TOT_POP, TOT_MALE, TOT_FEMALE, AGEGRP, White, Black, Hispanic, Indian_Alaska, Asian, Hawaiian_PI, Two_or_more)
 
 # Formating the years and county name
 demographic_data <- demographic_all %>% 
+  filter(AGEGRP == 0) %>% 
   filter(YEAR != 1 & YEAR != 2) %>% 
   mutate(YEAR = YEAR + 2007) %>%
-  mutate(CTYNAME = str_remove(CTYNAME, " County"))
+  mutate(CTYNAME = str_remove(CTYNAME, " County")) 
 
-# Adding demographics for counties in each year
-demographic_short <- demographic_data %>% 
+# Creating a column combining non-white demographics
+demographic_data <- demographic_data %>% 
   group_by(CTYNAME, YEAR) %>% 
-  summarize(tot_pop = sum(TOT_POP),
-            tot_male = sum(TOT_MALE),
-            tot_female = sum(TOT_FEMALE),
-            white = sum(White),
-            hispanic = sum(Hispanic),
-            black = sum(Black),
-            indian_alaska = sum(Indian_Alaska),
-            asian = sum(Asian),
-            hawaiian_pi = sum(Hawaiian_PI),
-            two_or_more = sum(Two_or_more))
-
-# creating a non-white demographic column
-demographic_short <- demographic_short %>% 
-  group_by(CTYNAME, YEAR) %>% 
-  mutate(non_white = sum(hispanic,black,indian_alaska,asian,hawaiian_pi,two_or_more))
-
-demographic_short %>% head()
+  mutate(non_white = sum(Hispanic, Black, Indian_Alaska, Asian, Hawaiian_PI, Two_or_more)) %>%   select(-AGEGRP, -STATE)
 
 ```
-
 
 ```{r}
 # Pivoting longer?
@@ -112,35 +96,29 @@ mn_demographic_long <- demographic_all %>%
 mn_demographic_long %>% arrange(desc(YEAR)) %>% head()
 ```
 
-
 ```{r}
 # Different plots showing different distributions in different counties filtered
-demographic_short %>% filter(CTYNAME == "Aitkin") %>% 
+demographic_data %>% filter(CTYNAME == "Ramsey") %>% na.omit() %>% 
   ggplot(aes(x = non_white)) +
-  geom_segment(aes(y = white, xend = c(tail(non_white, n = -1), NA), 
-                   yend = c(tail(white, n = -1), NA)),
+  geom_segment(aes(y = White, xend = c(tail(non_white, n = -1), NA), 
+                   yend = c(tail(White, n = -1), NA)),
                arrow = arrow(length = unit(0.4, "cm")),
                color = 4) +
-  geom_point(aes(y = white), size = 2, color = 4) +
-  geom_text(aes(label = YEAR, x = non_white + 20, y = white)) +
+  geom_point(aes(y = White), size = 2, color = 4) +
+  geom_text(aes(label = YEAR, x = non_white + non_white*0.02, y = White)) +
   theme_light()
   
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+```{r}
+demographic_data %>% filter(CTYNAME == "Aitkin") %>% na.omit() %>% 
+  ggplot(aes(x = non_white, y = White)) +
+  geom_line(size = 1, color = 4) +
+  geom_point(size = 2.5, color = 4) +
+  geom_text(aes(label = YEAR, hjust = 1)) +
+  theme_light()
+```
 
 
 
