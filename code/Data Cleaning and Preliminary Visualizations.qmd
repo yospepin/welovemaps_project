@@ -211,6 +211,4 @@ p
 
     Color gradients, while useful, may not clearly convey small differences in income between counties, especially for viewers with color vision deficiencies.
 
-    With multiple maps in a single view, tracking changes for specific counties across years can be challenging, especially if the viewer needs to examine each county’s trend individually.
-
-County leve email to briannsa
+    With multiple maps in a single view, tracking changes for specific counties across years can be challenging, especially if the viewer needs to examine each county’s trend individually

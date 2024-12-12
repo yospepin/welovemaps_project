@@ -57,6 +57,7 @@ head(demographic_all)
 
 ```{r}
 demographic_all <- demographic_all %>%
+  filter(AGEGRP == 0) %>% 
   mutate(White = WA_MALE + WA_FEMALE,
          Black = BA_MALE + BA_FEMALE,
          Hispanic = H_MALE + H_FEMALE,
@@ -81,29 +82,6 @@ age_sex <- read.csv("../data/cc-est2019-agesex-27.csv")
 
 ```{r}
 library(stringr)
-new_ageSex <- age_sex %>% 
-  select(!c(STNAME, SUMLEV, STATE)) %>% 
-  rename_with(.cols = starts_with("MEDIAN"), .fn = function(x){str_replace(x, "_", ".")}) %>% 
-  rename("POPEST_TOT" = "POPESTIMATE") %>% 
-  pivot_longer(
-    cols = !(COUNTY:YEAR),
-    names_to = c("genre", ".value"),
-    names_sep = "_",
-    values_drop_na = TRUE
-  ) 
-head(new_ageSex, 20)
-
-```
-
-```{r}
-age_sex <- read.csv("data_files/data/cc-est2019-agesex-27.csv")
-```
-
--   Delete 'STATE', 'SUMLEV', 'STNAME', variable,
--   Rename columns to match pivoting
--   Pivot longer
-
-```{r}
 new_ageSex <- age_sex %>% 
   select(!c(STNAME, SUMLEV, STATE)) %>% 
   rename_with(.cols = starts_with("MEDIAN"), .fn = function(x){str_replace(x, "_", ".")}) %>% 
@@ -148,6 +126,7 @@ ggplot(df_mn_long, aes(x = Year, y = Income)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
   scale_y_continuous(labels = scales::comma)  
+
 ```
 
 ## Write up

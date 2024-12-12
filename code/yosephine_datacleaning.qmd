@@ -10,6 +10,8 @@ editor: visual
 
 ```{r}
 library(dplyr)
+library(ggplot2)
+library(tidyr)
 demographic_all <- read.csv("../data/cc-est2019-alldata-27.csv")
 head(demographic_all)
 ```
@@ -40,7 +42,11 @@ mn_demographic_long <- demographic_all %>%
                values_to = "Population")
 
 # Plot the demographic breakdown for each county
+<<<<<<< Updated upstream
 ggplot(mn_demographic_long, aes(x = reorder(CTYNAME, -Population), y = Population, fill = Race)) +
+=======
+ggplot(demographic_all, aes(x = reorder(CTYNAME, -TOT_POP), y = TOT_POP)) +
+>>>>>>> Stashed changes
   geom_bar(stat = "identity") +
   coord_flip() +
   labs(title = "Demographic Breakdown by Race in Minnesota Counties",
