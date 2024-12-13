@@ -1,0 +1,166 @@
+---
+title: "project"
+format: html
+editor: visual
+---
+
+```{r}
+data <- read_csv("../../CAINC4_MN_1969_2022.csv")   #importing income dataset
+demographic_all <- read.csv("../../cc-est2019-alldata-27.csv")   #importing demographic dataset
+head(demographic_all)
+
+demographic_all %>% group_by(COUNTY, CTYNAME) %>% summarize(count = n())
+```
+
+## Data viz
+
+### variable units for "income_year" data
+
+-   personal income (thousands of dollars)
+-   per capita personal income (dollars)
+-   wages and salaries (Thousands of dollars)
+-   non-farm personal income (thousands of dollars)
+-   farm income (thousands of dollars)
+-   total employment (Number of jobs)
+-   population (Number of persons)
+
+```{r}
+
+# Cleaning the income dataset using Ellie's code, and leaving variables 
+filtered_data <- data[data$Description %in% c("Personal income (thousands of dollars)", "Per capita personal income (dollars) 4/", "Wages and salaries", "Nonfarm personal income 1/", "Farm income 2/", "Total employment", "Population (persons) 3/"), ]
+filtered_data <- filtered_data[, !(names(filtered_data) %in% c("Region", "LineCode", "TableName", "Unit", "IndustryClassification"))]
+filtered_data <- na.omit(filtered_data) %>% select(-(`1969`:`2011`))
+
+# adjusting income with inflation rates using Ellie's code!
+#This is where the interest rate change is
+cpi_data <- data.frame(
+  Year = 2012:2022,
+  CPI = c(229.6, 233.0, 236.7, 237.0, 240.0, 245.1, 251.1, 255.7, 258.8, 271.0, 292.7) 
+)
+
+# Set base year for CPI adjustment (2022)
+base_year <- 2022
+cpi_base <- cpi_data %>% filter(Year == base_year) %>% pull(CPI)
+
+# Adjust each year from 2012 to 2022 based on CPI
+adjusted_data <- filtered_data %>%
+  mutate(across(starts_with("20"), 
+                ~ . * cpi_base / cpi_data %>% filter(Year == as.numeric(substring(cur_column(), 1, 4))) %>% pull(CPI),
+                .names = "Real_{col}"))
+
+income_year <- adjusted_data %>% 
+  select(-(`2012`:`2022`)) %>% 
+  rename("2012" = "Real_2012", "2013" = "Real_2013", "2014" = "Real_2014", "2015" = "Real_2015", "2016" = "Real_2016", "2017" = "Real_2017", "2018" = "Real_2018", "2019" = "Real_2019", "2020" = "Real_2020", "2021" = "Real_2021", "2022" = "Real_2022")
+
+income_year <- income_year %>% 
+  pivot_longer(`2012`:`2022`,names_to = 'year',values_to='value') %>%
+  pivot_wider(names_from = Description, values_from = value)
+
+income_year <- income_year %>% 
+  rename(per_capita_income = 'Per capita personal income (dollars) 4/',
+         personal_income = 'Personal income (thousands of dollars)',
+         salaries = 'Wages and salaries',
+         population = 'Population (persons) 3/',
+         total_employment = 'Total employment',
+         non_farm_income = 'Nonfarm personal income 1/',
+         farm_income = 'Farm income 2/')
+
+income_year <- income_year %>% 
+  rename(county = "GeoName")
+
+income_year <- income_year %>% 
+  mutate(county = str_remove_all(county, ", MN"))
+
+income_year %>% head()
+
+```
+
+```{r}
+# Combining male and female demographics
+demographic_all <- demographic_all %>%
+  mutate(White = WA_MALE + WA_FEMALE,
+         Black = BA_MALE + BA_FEMALE,
+         Hispanic = H_MALE + H_FEMALE,
+         Indian_Alaska = IA_MALE + IA_FEMALE,
+         Asian = AA_MALE + AA_FEMALE,
+         Hawaiian_PI = NA_MALE + NA_FEMALE,
+         Two_or_more = TOM_MALE + TOM_FEMALE)
+
+# selecting important variables
+demographic_all <- demographic_all %>% 
+  select(STATE, COUNTY, CTYNAME, YEAR, TOT_POP, TOT_MALE, TOT_FEMALE, AGEGRP, White, Black, Hispanic, Indian_Alaska, Asian, Hawaiian_PI, Two_or_more)
+
+# Formating the years and county name
+demographic_data <- demographic_all %>% 
+  filter(AGEGRP == 0) %>% 
+  filter(YEAR != 1 & YEAR != 2) %>% 
+  mutate(YEAR = YEAR + 2007) %>%
+  mutate(CTYNAME = str_remove(CTYNAME, " County")) 
+
+# Creating a column combining non-white demographics
+demographic_data <- demographic_data %>% 
+  group_by(CTYNAME, YEAR) %>% 
+  mutate(non_white = sum(Hispanic, Black, Indian_Alaska, Asian, Hawaiian_PI, Two_or_more)) %>%   select(-AGEGRP, -STATE)
+
+```
+
+```{r}
+# Pivoting longer?
+mn_demographic_long <- demographic_all %>%
+  select(YEAR, CTYNAME, White, Black, Hispanic, Indian_Alaska, Asian, Hawaiian_PI, Two_or_more) %>%
+  pivot_longer(cols = c(White, Black, Hispanic, Indian_Alaska, Asian, Hawaiian_PI, Two_or_more),
+               names_to = "Race",
+               values_to = "Population")
+
+
+
+mn_demographic_long %>% arrange(desc(YEAR)) %>% head()
+```
+
+```{r}
+# Different plots showing different distributions in different counties filtered
+demographic_data %>% filter(CTYNAME == "Ramsey") %>% na.omit() %>% 
+  ggplot(aes(x = non_white)) +
+  geom_segment(aes(y = White, xend = c(tail(non_white, n = -1), NA), 
+                   yend = c(tail(White, n = -1), NA)),
+               arrow = arrow(length = unit(0.4, "cm")),
+               color = 4) +
+  geom_point(aes(y = White), size = 2, color = 4) +
+  geom_text(aes(label = YEAR, x = non_white + non_white*0.02, y = White)) +
+  theme_light()
+  
+```
+
+```{r}
+demographic_data %>% filter(CTYNAME == "Aitkin") %>% na.omit() %>% 
+  ggplot(aes(x = non_white, y = White)) +
+  geom_line(size = 1, color = 4) +
+  geom_point(size = 2.5, color = 4) +
+  geom_text(aes(label = YEAR, hjust = 1)) +
+  theme_light()
+```
+
+
+```{r}
+income_year %>% 
+  filter(county!="Minnesota") %>% 
+  ggplot(aes(x = year)) +
+  geom_point(aes(y = farm_income))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
