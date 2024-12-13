@@ -32,9 +32,18 @@ ui <- fluidPage(
   titlePanel("Minnesota Counties: Income and Racial Makeup Over Time"),
   tabsetPanel(
     tabPanel("Introduction",
-             p("This app allows you to explore income and racial demographics in Minnesota counties over time. In the Couny-Level Analysis tab, you can click on a county to view income and racial demographics over time.
-               However, upon further considerations, we decided to zoom in to the tract level analysis for urban areas of Minnesota, because we believe that tract level analysis will provide more insights to our research 
-               question of recognizing pattern of gentrification in urban areas of Minnesota. In the Tract-Level Analysis tab, you can click on a tract to view income and racial demographics over time.")),
+         div(style = "text-align: center;",
+             img(src = "mapanimate.gif", height = "400px", width = "600px")
+         ),
+         p("Welcome to our interactive app for exploring income and racial 
+         demographics in Minnesota counties. This tool allows you to analyze 
+         demographic trends and patterns over time.In the County-Level Analysis 
+         tab, you can click on any county to view detailed income and racial 
+         demographic data over the years. Recognizing the need for a more 
+         detailed perspective, we have also included a Tract-Level Analysis tab 
+         that focuses on urban areas. We believe this detailed analysis at the 
+         tract level offers deeper insights into the patterns and trends of 
+         gentrification in Minnesota's urban communities.")),
     tabPanel("County-Level Analysis",
              sidebarLayout(
                sidebarPanel(
