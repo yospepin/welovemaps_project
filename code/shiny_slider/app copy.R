@@ -6,6 +6,7 @@
 #
 #    https://shiny.posit.co/
 #
+
 library(shiny)
 library(leaflet)
 library(ggplot2)
@@ -13,13 +14,15 @@ library(dplyr)
 library(sf)
 library(tigris)
 library(tidyr)
-library(stringr)
+
 merged_data_clean <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/data/mn_map_data.rds")
 this_one_instead <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/data/mn_income_map.rds") %>% 
   dplyr::rename("2012" = "Real_2012", "2013" = "Real_2013", "2014" = "Real_2014", "2015" = "Real_2015", "2016" = "Real_2016", "2017" = "Real_2017", "2018" = "Real_2018", "2019" = "Real_2019", "2020" = "Real_2020", "2021" = "Real_2021", "2022" = "Real_2022") 
+
 this_one_instead <- this_one_instead %>% 
   pivot_longer(cols = 15:25, names_to = "YEAR", values_to = "Income per capita") %>% 
   mutate(YEAR = as.numeric(YEAR))
+
 coordinates <- st_centroid(this_one_instead) %>% 
   select(-YEAR, -`Income per capita`)
 coordinates <- coordinates %>% 
@@ -27,7 +30,9 @@ coordinates <- coordinates %>%
          LAT = st_coordinates(.)[,2]) %>% 
   group_by(name) %>% 
   summarize(LON = mean(LON), LAT = mean(LAT))
+
 minnesota_counties <- counties(state = "MN", cb = TRUE, class = "sf")
+
 ui <- fluidPage(
   titlePanel("Minnesota Counties: Income and Racial Makeup Over Time"),
   tabsetPanel(
@@ -66,12 +71,13 @@ ui <- fluidPage(
                  h3("Racial Makeup Trends"),
                  plotOutput("tract_racePlot")
                )))
+  
+  
     
-    
-    
-    
+   
   )
 )
+
 server <- function(input, output, session) {
   
   output$countyMap <- renderLeaflet({
@@ -79,7 +85,7 @@ server <- function(input, output, session) {
     
     pal <- colorNumeric(
       palette = "viridis",
-      domain = c(30000, 95000)
+      domain = c(40000, 90000)  
     )
     leaflet(filtered_income) %>%
       addTiles() %>%
@@ -94,7 +100,7 @@ server <- function(input, output, session) {
         label = ~paste(name, ": $", round(`Income per capita`, 2)),
         layerId = ~name
       ) %>% 
-      addLegend("topright", pal = pal, values = c(30000, 95000),
+      addLegend("topright", pal = pal, values = c(40000, 90000),
                 title = str_c("Per Capita Income ", input$year),
                 labFormat = labelFormat(prefix = "$"),
                 opacity = 0.8
@@ -104,6 +110,7 @@ server <- function(input, output, session) {
   observe(
     {
       click <- input$countyMap_shape_click
+
       if(is.null(click)){
         return()
       }else{
@@ -151,22 +158,22 @@ server <- function(input, output, session) {
     
     county_data <- county_data %>%
       select(YEAR, White, Black, Hispanic, Asian, Indian_Alaska, Hawaiian_PI, Two_or_more)
-    
+   
     county_data <- county_data %>%
       mutate(Non_White = Black + Hispanic + Asian + Indian_Alaska + Hawaiian_PI + Two_or_more)
-    
+      
     ggplot(county_data, aes(x = YEAR)) +
-      geom_line(aes(y = year_percentage_change(White), color = "White Population")) +
-      # geom_line(aes(y = year_percentage_change(Non_White), color = "Non-White Population")) +
-      geom_line(aes(y = year_percentage_change(Hispanic), color = "Hispanic Population")) +
-      geom_line(aes(y = year_percentage_change(Asian), color = "Asian Population")) +
-      geom_line(aes(y = year_percentage_change(Indian_Alaska), color = "Indian/Alaska Population")) +
-      geom_line(aes(y = year_percentage_change(Hawaiian_PI), color = "Hawaiian/PI Population")) +
-      geom_line(aes(y = year_percentage_change(Two_or_more), color = "Two or More")) +
-      labs(title = paste("Population Composition Trends for", county_data$GeoName[1]),
-           y = "Percentage Change (%)",
-           color = "Legend") +
-      theme_minimal()
+     geom_line(aes(y = year_percentage_change(White), color = "White Population")) +
+     # geom_line(aes(y = year_percentage_change(Non_White), color = "Non-White Population")) +
+     geom_line(aes(y = year_percentage_change(Hispanic), color = "Hispanic Population")) +
+     geom_line(aes(y = year_percentage_change(Asian), color = "Asian Population")) +
+     geom_line(aes(y = year_percentage_change(Indian_Alaska), color = "Indian/Alaska Population")) +
+     geom_line(aes(y = year_percentage_change(Hawaiian_PI), color = "Hawaiian/PI Population")) +
+     geom_line(aes(y = year_percentage_change(Two_or_more), color = "Two or More")) +
+     labs(title = paste("Population Composition Trends for", county_data$GeoName[1]),
+          y = "Percentage Change (%)",
+          color = "Legend") +
+     theme_minimal()
   })
   
   # output$tractMap
