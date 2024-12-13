@@ -15,8 +15,8 @@ library(sf)
 library(tigris)
 library(tidyr)
 
-merged_data_clean <- readRDS("mn_map_data.rds")
-this_one_instead <- readRDS("mn_income_map.rds") %>% 
+merged_data_clean <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/data/mn_map_data.rds")
+this_one_instead <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/data/mn_income_map.rds") %>% 
   dplyr::rename("2012" = "Real_2012", "2013" = "Real_2013", "2014" = "Real_2014", "2015" = "Real_2015", "2016" = "Real_2016", "2017" = "Real_2017", "2018" = "Real_2018", "2019" = "Real_2019", "2020" = "Real_2020", "2021" = "Real_2021", "2022" = "Real_2022") 
 
 this_one_instead <- this_one_instead %>% 
