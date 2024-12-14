@@ -14,17 +14,13 @@ library(sf)
 library(tigris)
 library(tidyr)
 library(stringr)
-
-#Data Loading and Cleaning
 merged_data_clean <- readRDS("../../data/mn_map_data.rds")
-with_inflation <- readRDS("../../data/mn_income_map.rds") %>% 
+this_one_instead <- readRDS("../../data/mn_income_map.rds") %>% 
   dplyr::rename("2012" = "Real_2012", "2013" = "Real_2013", "2014" = "Real_2014", "2015" = "Real_2015", "2016" = "Real_2016", "2017" = "Real_2017", "2018" = "Real_2018", "2019" = "Real_2019", "2020" = "Real_2020", "2021" = "Real_2021", "2022" = "Real_2022") 
-
-with_inflation <- with_inflation %>% 
+this_one_instead <- this_one_instead %>% 
   pivot_longer(cols = 15:25, names_to = "YEAR", values_to = "Income per capita") %>% 
   mutate(YEAR = as.numeric(YEAR))
-
-coordinates <- st_centroid(with_inflation) %>% 
+coordinates <- st_centroid(this_one_instead) %>% 
   select(-YEAR, -`Income per capita`)
 coordinates <- coordinates %>% 
   mutate(LON = st_coordinates(.)[,1],
@@ -32,9 +28,10 @@ coordinates <- coordinates %>%
   group_by(name) %>% 
   summarize(LON = mean(LON), LAT = mean(LAT))
 
+# Load the tract-level income data
+tract_income_data <- readRDS("../income_data_2012_2022.rds")
 minnesota_counties <- counties(state = "MN", cb = TRUE, class = "sf")
 
-#User Interface
 ui <- fluidPage(
   titlePanel("The Geography of Wealth and Identity in Minnesota Counties"),
   tabsetPanel(
@@ -96,17 +93,25 @@ ui <- fluidPage(
     tabPanel("Tract-Level Analysis",
              sidebarLayout(
                sidebarPanel(
-                 p("Click on a tract to view income and racial demographics over time.")
+                 p("Use the slider to select a year and view income trends by census tract."),
+                 sliderInput(
+                   "tract_year",
+                   "Select Year:",
+                   min = 2012,
+                   max = 2022,
+                   value = 2012,
+                   step = 1,
+                   animate = TRUE
+                 )
                ),
                mainPanel(
                  leafletOutput("tractMap"),
-                 h3("Income Trends"),
+                 h3("Income Trends by Tract"),
                  plotOutput("tract_incomePlot"),
-                 h3("Racial Makeup Trends"),
+                 h3("Racial Makeup Trends by Tract"),
                  plotOutput("tract_racePlot")
                )
-             )
-    ),
+             )),
     tags$footer(
       style = "text-align: center; padding: 10px; margin-top: 20px; background-color: #f8f9fa; border-top: 1px solid #dee2e6;",
       p("© Yosephine, Ellie, Iris. All rights reserved."),
@@ -114,12 +119,10 @@ ui <- fluidPage(
     )
   )
 )
-
-
 server <- function(input, output, session) {
   
   output$countyMap <- renderLeaflet({
-    filtered_income <- with_inflation %>% filter(YEAR == input$year)
+    filtered_income <- this_one_instead %>% filter(YEAR == input$year)
     
     pal <- colorNumeric(
       palette = "viridis",
@@ -172,12 +175,12 @@ server <- function(input, output, session) {
     #browser()
     req(input$countyMap_shape_click$id)
     selected_county_name <- input$countyMap_shape_click$id
-    with_inflation <- with_inflation %>%
+    this_one_instead <- this_one_instead %>%
       mutate(isSelected = ifelse(name == selected_county_name, "Selected", "Other"))
     
-    ggplot(with_inflation, aes(x = YEAR, y = `Income per capita`,  color = isSelected)) +
+    ggplot(this_one_instead, aes(x = YEAR, y = `Income per capita`,  color = isSelected)) +
       geom_line(aes(group = name),size = 1, alpha = 0.3) + 
-      geom_line(data = with_inflation %>% filter(isSelected == 'Selected'),size = 1) +
+      geom_line(data = this_one_instead %>% filter(isSelected == 'Selected'),size = 1) +
       scale_color_manual(
         values = c("Selected" = "blue", "Other" = "grey")) +
       labs(
@@ -213,8 +216,82 @@ server <- function(input, output, session) {
       theme_minimal()
   })
   
-  # output$tractMap
-  # output$tract_incomePlot
-  # output$tract_racePlot
-}
+  output$tractMap <- renderLeaflet({
+    filtered_tract_income <- tract_income_data %>% filter(Year == input$tract_year)
+    
+    pal <- colorNumeric(
+      palette = "viridis",
+      domain = filtered_tract_income$estimate
+    )
+    
+    leaflet(filtered_tract_income) %>%
+      addTiles() %>%
+      addPolygons(
+        fillColor = ~pal(estimate),
+        fillOpacity = 0.7,
+        color = "black",
+        weight = 1,
+        highlight = highlightOptions(weight = 2, color = "red", bringToFront = TRUE),
+        label = ~paste0(tract, ": $", format(round(estimate, 0), big.mark = ",")),
+        layerId = ~GEOID
+      ) %>%
+      addLegend("bottomright", pal = pal, values = filtered_tract_income$estimate,
+                title = paste("Median Income", input$tract_year),
+                labFormat = labelFormat(prefix = "$"),
+                opacity = 0.7)
+  })
+  
+  # Observe click on the map
+  selected_tract <- reactive({
+    req(input$tractMap_shape_click$id)
+    tract_income_data %>% filter(GEOID == input$tractMap_shape_click$id)
+  })
+  
+  # Tract-Level Income Plot
+  output$tract_incomePlot <- renderPlot({
+    req(input$tractMap_shape_click$id)
+    selected_tract_id <- input$tractMap_shape_click$id
+    
+    tract_income_data <- tract_income_data %>%
+      mutate(isSelected = ifelse(GEOID == selected_tract_id, "Selected", "Other"))
+    
+    ggplot(tract_income_data, aes(x = Year, y = estimate, color = isSelected)) +
+      geom_line(aes(group = GEOID), size = 1, alpha = 0.3) +
+      geom_line(data = tract_income_data %>% filter(isSelected == "Selected"), size = 1) +
+      scale_color_manual(values = c("Selected" = "blue", "Other" = "grey")) +
+      labs(
+        title = paste("Income Trends for Tract", selected_tract_id),
+        x = "Year",
+        y = "Median Income ($)",
+        color = "Legend"
+      ) +
+      theme_minimal()
+  })
+  
+  
+  tract_data <- readRDS("../../data/tract_data.rds")
+  
+  output$tract_racePlot <- renderPlot({
+    req(input$tractMap_shape_click$id)
+    selected_tract_id <- input$tractMap_shape_click$id
+    
+    race_data <- tract_data %>% 
+      filter(GEOID == selected_tract_id) %>%
+      filter(variable %in% c("white", "black", "Indian_Alaska", "asian", "Hawaiian_PI", "Two_or_more", "hispanic"))
+    race_data <- race_data %>%
+      group_by(variable) %>%
+      mutate(percentage_change = year_percentage_change(estimate)) %>%
+      ungroup()
+    
+    ggplot(race_data, aes(x = YEAR, y = percentage_change, color = variable)) +
+      geom_line(size = 1) +
+      labs(
+        title = paste("Racial Makeup Trends for Tract", selected_tract_id),
+        x = "Year",
+        y = "Percentage Change in Population",
+        color = "Race"
+      ) +
+      theme_minimal()
+  })
+} 
 shinyApp(ui = ui, server = server)
