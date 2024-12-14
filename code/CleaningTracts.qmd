@@ -11,6 +11,7 @@ library(dplyr)
 library(ggplot2)
 library(viridis)
 library(stringr)
+library(tidyr)
 ```
 
 ```{r}
@@ -23,20 +24,6 @@ cpi_data <- data.frame(
 # Set base year for CPI adjustment (2022)
 base_year <- 2022
 cpi_base <- cpi_data %>% filter(Year == base_year) %>% pull(CPI)
-```
-
-```{r}
-# Join income_data with cpi_data
-income_data_adjusted <- income_data %>%
-  left_join(cpi_data, by = "Year") %>%  # Add CPI values for each year
-  mutate(
-    estimate_adjusted = estimate * (cpi_base / CPI)  # Adjust to 2022 dollars
-  ) %>%
-  select(GEOID, tract, estimate, estimate_adjusted, Year, geometry)
-
-# Display the first few rows of the adjusted data
-head(income_data_adjusted)
-
 ```
 
 ```{r}
@@ -82,13 +69,79 @@ income_data <- income_data %>%
 ```
 
 ```{r}
+# Join income_data with cpi_data
+income_data_adjusted <- income_data %>%
+  left_join(cpi_data, by = "Year") %>%  # Add CPI values for each year
+  mutate(
+    estimate_adjusted = estimate * (cpi_base / CPI)  # Adjust to 2022 dollars
+  ) %>%
+  select(GEOID, tract, estimate, estimate_adjusted, Year, geometry)
+
+# Display the first few rows of the adjusted data
+head(income_data_adjusted)
+
+```
+```{r}
+# Define race variables to fetch
+race_variables <- c(
+  White = "B02001_002",
+  Black = "B02001_003",
+  Asian = "B02001_005",
+  Hispanic = "B03003_003",
+  American_Indian_Alaska_Native = "B02001_004",
+  Native_Hawaiian_Pacific_Islander = "B02001_006",
+  Two_or_More = "B02001_008"
+)
+
+# Function to fetch race data for a given year
+fetch_race_data <- function(year) {
+  get_acs(
+    geography = "tract",
+    variables = race_variables,
+    state = state,
+    county = counties,
+    year = year,
+    survey = "acs5",
+    geometry = FALSE
+  ) %>%
+    mutate(Year = year)  # Add a column for the year
+}
+
+# Fetch data for all years and combine into one data frame
+race_data_list <- lapply(years, fetch_race_data)
+race_data <- bind_rows(race_data_list)
+
+# Clean the race data
+race_data <- race_data %>%
+  rename(tract = NAME) %>%
+  select(GEOID, tract, variable, estimate, Year) %>%
+  pivot_wider(names_from = variable, values_from = estimate)
+
+```
+```{r}
+# Join the race data with the adjusted income data
+combined_data <- income_data_adjusted %>%
+  left_join(race_data, by = c("GEOID", "Year"))
+
+# Replace NA values with 0 for race counts
+combined_data <- combined_data %>%
+  mutate(across(c(White, Black, Asian, Hispanic, American_Indian_Alaska_Native,
+                  Native_Hawaiian_Pacific_Islander, Two_or_More),
+                ~ replace_na(., 0)))
+
+# Display the first few rows of the combined data
+head(combined_data)
+
+```
+
+```{r}
 # Function to create a plot for a given year
 plot_income_by_year <- function(data, year) {
   ggplot(data = filter(data, Year == year)) +
-    geom_sf(aes(fill = estimate), color = "white", size = 0.2) +
+    geom_sf(aes(fill = estimate_adjusted), color = "white", size = 0.2) +
     scale_fill_viridis(option = "plasma", na.value = "grey80", direction = -1) +
     labs(
-      title = paste("Median Household Income by Census Tract -", year),
+      title = paste("Median Household Income by Census Tract (Adjusted) -", year),
       fill = "Income ($)",
       caption = "Source: ACS 5-Year Estimates"
     ) +
@@ -101,11 +154,54 @@ plot_income_by_year <- function(data, year) {
 
 # Generate and save plots for each year
 for (year in years) {
-  print(plot_income_by_year(income_data, year))
+  print(plot_income_by_year(combined_data, year))
 }
+
+```
+```{r}
+# Check the first few rows of combined_data
+head(combined_data)
+
+# Ensure the race columns are present
+race_columns <- c("White", "Black", "Asian", "Hispanic", 
+                  "American_Indian_Alaska_Native", 
+                  "Native_Hawaiian_Pacific_Islander", "Two_or_More")
+
+# Summarize race data by year
+race_summary <- combined_data %>%
+  group_by(Year) %>%
+  summarize(across(all_of(race_columns), sum, na.rm = TRUE))
+
+# Reshape the data to long format for plotting
+race_summary_long <- race_summary %>%
+  pivot_longer(cols = all_of(race_columns), 
+               names_to = "Race", 
+               values_to = "Population")
+plot_race_by_year <- function(data) {
+  ggplot(data, aes(x = Year, y = Population, color = Race)) +
+    geom_line(size = 1) +
+    geom_point(size = 2) +
+    labs(
+      title = "Race Composition Trends by Year",
+      x = "Year",
+      y = "Population",
+      color = "Race"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16),
+      legend.position = "right"
+    )
+}
+
+# Generate the plot
+race_plot <- plot_race_by_year(race_summary_long)
+
+# Display the plot
+print(race_plot)
 
 ```
 
 ```{r}
-saveRDS(income_data, file = "income_data_2012_2022.rds")
+saveRDS(combined_data, file = "income_race_data_2012_2022.rds")
 ```

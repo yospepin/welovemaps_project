@@ -28,7 +28,7 @@ coordinates <- coordinates %>%
   group_by(name) %>% 
   summarize(LON = mean(LON), LAT = mean(LAT))
 # Load the tract-level income data
-tract_income_data <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/code/income_data_2012_2022.rds")
+tract_income_data <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/code/income_race_data_2012_2022.rds")
 minnesota_counties <- counties(state = "MN", cb = TRUE, class = "sf")
 ui <- fluidPage(
   titlePanel("Minnesota Counties: Income and Racial Makeup Over Time"),
@@ -82,7 +82,9 @@ ui <- fluidPage(
                mainPanel(
                  leafletOutput("tractMap"),
                  h3("Income Trends by Tract"),
-                 plotOutput("tract_incomePlot")
+                 plotOutput("tract_incomePlot"),
+                 h3("Racial Makeup Trends by Tract"),
+                 plotOutput("tract_racePlot")
                )
              ))
   )
@@ -208,18 +210,86 @@ server <- function(input, output, session) {
   })
   
   # Tract-Level Income Plot
+  output$tractMap <- renderLeaflet({
+    filtered_tract_income <- tract_income_data %>% filter(Year == input$tract_year)
+    
+    pal <- colorNumeric(
+      palette = "viridis",
+      domain = filtered_tract_income$estimate_adjusted
+    )
+    
+    leaflet(filtered_tract_income) %>%
+      addTiles() %>%
+      addPolygons(
+        fillColor = ~pal(estimate_adjusted),
+        fillOpacity = 0.7,
+        color = "black",
+        weight = 1,
+        highlight = highlightOptions(weight = 2, color = "red", bringToFront = TRUE),
+        label = ~paste0(tract.x, ": $", format(round(estimate_adjusted, 0), big.mark = ","))
+      ) %>%
+      addLegend("bottomright", pal = pal, values = filtered_tract_income$estimate_adjusted,
+                title = paste("Median Income", input$tract_year),
+                labFormat = labelFormat(prefix = "$"),
+                opacity = 0.7)
+  })
+  
+  # Reactive expression for selected tract
+  selected_tract <- reactive({
+    req(input$tractMap_shape_click$id)
+    tract_income_data %>%
+      filter(GEOID == input$tractMap_shape_click$id) %>%
+      select(GEOID, tract.x, Year, estimate_adjusted, White, Black, Asian, Hispanic,
+             American_Indian_Alaska_Native, Native_Hawaiian_Pacific_Islander, Two_or_More)
+  })
+  
+  # Tract-Level Income Plot
   output$tract_incomePlot <- renderPlot({
-    ggplot(tract_income_data, aes(x = Year, y = estimate, group = GEOID, color = tract)) +
-      geom_line(alpha = 0.3) +
-      geom_line(data = tract_income_data %>% filter(Year == input$tract_year), size = 1, color = "blue") +
+    req(input$tractMap_shape_click$id)
+    selected_tract_data <- selected_tract()
+    selected_tract_name <- selected_tract_data$tract.x[1]
+    if (is.na(selected_tract_name) || is.null(selected_tract_name)) {
+      selected_tract_name <- selected_tract_data$GEOID[1]
+    }
+    
+    ggplot(selected_tract_data, aes(x = Year, y = estimate_adjusted, group = GEOID)) +
+      geom_line(size = 1, color = "blue") +
+      geom_point(size = 2, color = "blue") +
       labs(
-        title = "Median Household Income by Census Tract",
+        title = paste("Income Trends for", selected_tract_name),
         x = "Year",
-        y = "Median Income ($)",
-        color = "Tract"
+        y = "Median Income (Adjusted to 2022 $)"
       ) +
-      theme_minimal() +
-      theme(legend.position = "none")
+      theme_minimal()
+  })
+  
+  # Tract-Level Race Plot
+  output$tract_racePlot <- renderPlot({
+    req(input$tractMap_shape_click$id)
+    selected_tract_data <- selected_tract()
+    selected_tract_name <- selected_tract_data$tract.x[1]
+    if (is.na(selected_tract_name) || is.null(selected_tract_name)) {
+      selected_tract_name <- selected_tract_data$GEOID[1]
+    }
+    
+    race_columns <- c("White", "Black", "Asian", "Hispanic", 
+                      "American_Indian_Alaska_Native", 
+                      "Native_Hawaiian_Pacific_Islander", "Two_or_More")
+    
+    race_data_long <- selected_tract_data %>%
+      select(Year, all_of(race_columns)) %>%
+      pivot_longer(cols = all_of(race_columns), names_to = "Race", values_to = "Population")
+    
+    ggplot(race_data_long, aes(x = Year, y = Population, color = Race)) +
+      geom_line(size = 1) +
+      geom_point(size = 2) +
+      labs(
+        title = paste("Racial Makeup Trends for", selected_tract_name),
+        x = "Year",
+        y = "Population",
+        color = "Race"
+      ) +
+      theme_minimal()
   })
 }
   
