@@ -27,6 +27,8 @@ coordinates <- coordinates %>%
          LAT = st_coordinates(.)[,2]) %>% 
   group_by(name) %>% 
   summarize(LON = mean(LON), LAT = mean(LAT))
+# Load the tract-level income data
+tract_income_data <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/code/income_data_2012_2022.rds")
 minnesota_counties <- counties(state = "MN", cb = TRUE, class = "sf")
 ui <- fluidPage(
   titlePanel("Minnesota Counties: Income and Racial Makeup Over Time"),
@@ -66,19 +68,23 @@ ui <- fluidPage(
     tabPanel("Tract-Level Analysis",
              sidebarLayout(
                sidebarPanel(
-                 p("Click on a tract to view income and racial demographics over time.")
+                 p("Use the slider to select a year and view income trends by census tract."),
+                 sliderInput(
+                   "tract_year",
+                   "Select Year:",
+                   min = 2012,
+                   max = 2022,
+                   value = 2012,
+                   step = 1,
+                   animate = TRUE
+                 )
                ),
                mainPanel(
                  leafletOutput("tractMap"),
-                 h3("Income Trends"),
-                 plotOutput("tract_incomePlot"),
-                 h3("Racial Makeup Trends"),
-                 plotOutput("tract_racePlot")
-               )))
-    
-    
-    
-    
+                 h3("Income Trends by Tract"),
+                 plotOutput("tract_incomePlot")
+               )
+             ))
   )
 )
 server <- function(input, output, session) {
@@ -177,9 +183,44 @@ server <- function(input, output, session) {
            color = "Legend") +
       theme_minimal()
   })
+  output$tractMap <- renderLeaflet({
+    filtered_tract_income <- tract_income_data %>% filter(Year == input$tract_year)
+    
+    pal <- colorNumeric(
+      palette = "viridis",
+      domain = filtered_tract_income$estimate
+    )
+    
+    leaflet(filtered_tract_income) %>%
+      addTiles() %>%
+      addPolygons(
+        fillColor = ~pal(estimate),
+        fillOpacity = 0.7,
+        color = "black",
+        weight = 1,
+        highlight = highlightOptions(weight = 2, color = "red", bringToFront = TRUE),
+        label = ~paste0(tract, ": $", format(round(estimate, 0), big.mark = ","))
+      ) %>%
+      addLegend("bottomright", pal = pal, values = filtered_tract_income$estimate,
+                title = paste("Median Income", input$tract_year),
+                labFormat = labelFormat(prefix = "$"),
+                opacity = 0.7)
+  })
   
-  # output$tractMap
-  # output$tract_incomePlot
-  # output$tract_racePlot
+  # Tract-Level Income Plot
+  output$tract_incomePlot <- renderPlot({
+    ggplot(tract_income_data, aes(x = Year, y = estimate, group = GEOID, color = tract)) +
+      geom_line(alpha = 0.3) +
+      geom_line(data = tract_income_data %>% filter(Year == input$tract_year), size = 1, color = "blue") +
+      labs(
+        title = "Median Household Income by Census Tract",
+        x = "Year",
+        y = "Median Income ($)",
+        color = "Tract"
+      ) +
+      theme_minimal() +
+      theme(legend.position = "none")
+  })
 }
+  
 shinyApp(ui = ui, server = server)
