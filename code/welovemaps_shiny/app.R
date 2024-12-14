@@ -14,36 +14,64 @@ library(sf)
 library(tigris)
 library(tidyr)
 library(stringr)
-merged_data_clean <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/data/mn_map_data.rds")
-this_one_instead <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/data/mn_income_map.rds") %>% 
+
+#Data Loading and Cleaning
+merged_data_clean <- readRDS("../../data/mn_map_data.rds")
+with_inflation <- readRDS("../../data/mn_income_map.rds") %>% 
   dplyr::rename("2012" = "Real_2012", "2013" = "Real_2013", "2014" = "Real_2014", "2015" = "Real_2015", "2016" = "Real_2016", "2017" = "Real_2017", "2018" = "Real_2018", "2019" = "Real_2019", "2020" = "Real_2020", "2021" = "Real_2021", "2022" = "Real_2022") 
-this_one_instead <- this_one_instead %>% 
+
+with_inflation <- with_inflation %>% 
   pivot_longer(cols = 15:25, names_to = "YEAR", values_to = "Income per capita") %>% 
   mutate(YEAR = as.numeric(YEAR))
-coordinates <- st_centroid(this_one_instead) %>% 
+
+coordinates <- st_centroid(with_inflation) %>% 
   select(-YEAR, -`Income per capita`)
 coordinates <- coordinates %>% 
   mutate(LON = st_coordinates(.)[,1],
          LAT = st_coordinates(.)[,2]) %>% 
   group_by(name) %>% 
   summarize(LON = mean(LON), LAT = mean(LAT))
+
 minnesota_counties <- counties(state = "MN", cb = TRUE, class = "sf")
+
+#User Interface
 ui <- fluidPage(
-  titlePanel("Minnesota Counties: Income and Racial Makeup Over Time"),
+  titlePanel("The Geography of Wealth and Identity in Minnesota Counties"),
   tabsetPanel(
     tabPanel("Introduction",
-         div(style = "text-align: center;",
-             img(src = "mapanimate.gif", height = "400px", width = "600px")
-         ),
-         p("Welcome to our interactive app for exploring income and racial 
-         demographics in Minnesota counties. This tool allows you to analyze 
-         demographic trends and patterns over time.In the County-Level Analysis 
-         tab, you can click on any county to view detailed income and racial 
-         demographic data over the years. Recognizing the need for a more 
-         detailed perspective, we have also included a Tract-Level Analysis tab 
-         that focuses on urban areas. We believe this detailed analysis at the 
-         tract level offers deeper insights into the patterns and trends of 
-         gentrification in Minnesota's urban communities.")),
+             fluidRow(
+               column(6,
+                      h3("Research Focus"),
+                      h4("How Space Entrenches Inequality"),
+                      p("Space and place actively influence access to resources, jobs, healthcare, and education rather than serving as a passive 
+                        backdrop for economic activity. These spatial dynamics have the potential to perpetuate inequality since families in wealthier 
+                        regions are better equipped to amass wealth, while those in lower-income neighborhoods encounter barriers."),
+                      h4("Objectives of This Study"),
+                      p("The aim of this study is to create an interactive tool to visualize how income and racial demographics have changed over the years. 
+                         By providing a dynamic platform for exploration, this tool aims to offer insights into how these two factors correlate and uncover 
+                         patterns that may help our audiences to better understand the dynamics of economic and racial inequality in Minnesota."),
+                      h4("Key Research Questions"),
+                      tags$ul(
+                        tags$li("How Do Racial and Ethnic Demographic Shifts Correlate with Income Changes?"),
+                        tags$li("How have rural vs. urban counties in Minnesota been affected by demographic changes in relation to income 
+                                distribution?")
+                      ),
+                      h4("Mapping and Findings"),
+                      p("Plotting income trends alongside population changes in important racial and ethnic groupings will help us better 
+                        understand how changes in these demographics relate to changes in income. Additionally, a choropleth map will be 
+                        used to highlight areas of concentrated wealth and poverty across Minnesota."),
+                      p("Key findings include correlations between racial demographic shifts and income changes, the role of education in 
+                        economic resilience, and the need for targeted policies in rural areas experiencing demographic decline.")
+               ),
+               column(6,
+                      h4("Map Animation"),
+                      p("Below is a preview of our interactive visualization showcasing an animation of income trends over the years of 2012-2022 in Minnesota counties."),
+                      div(style = "text-align: center;",
+                          img(src = "mapanimate.gif", height = "400px", width = "600px")
+                      )
+               )
+             )
+    ),
     tabPanel("County-Level Analysis",
              sidebarLayout(
                sidebarPanel(
@@ -62,7 +90,9 @@ ui <- fluidPage(
                  plotOutput("incomePlot"),
                  h3("Racial Makeup Trends"),
                  plotOutput("racePlot")
-               ))),
+               )
+             )
+    ),
     tabPanel("Tract-Level Analysis",
              sidebarLayout(
                sidebarPanel(
@@ -74,17 +104,22 @@ ui <- fluidPage(
                  plotOutput("tract_incomePlot"),
                  h3("Racial Makeup Trends"),
                  plotOutput("tract_racePlot")
-               )))
-    
-    
-    
-    
+               )
+             )
+    ),
+    tags$footer(
+      style = "text-align: center; padding: 10px; margin-top: 20px; background-color: #f8f9fa; border-top: 1px solid #dee2e6;",
+      p("© Yosephine, Ellie, Iris. All rights reserved."),
+      p("Data sources: US Census Bureau, Bureau of Economic Analysis.")
+    )
   )
 )
+
+
 server <- function(input, output, session) {
   
   output$countyMap <- renderLeaflet({
-    filtered_income <- this_one_instead %>% filter(YEAR == input$year)
+    filtered_income <- with_inflation %>% filter(YEAR == input$year)
     
     pal <- colorNumeric(
       palette = "viridis",
@@ -137,12 +172,12 @@ server <- function(input, output, session) {
     #browser()
     req(input$countyMap_shape_click$id)
     selected_county_name <- input$countyMap_shape_click$id
-    this_one_instead <- this_one_instead %>%
+    with_inflation <- with_inflation %>%
       mutate(isSelected = ifelse(name == selected_county_name, "Selected", "Other"))
     
-    ggplot(this_one_instead, aes(x = YEAR, y = `Income per capita`,  color = isSelected)) +
+    ggplot(with_inflation, aes(x = YEAR, y = `Income per capita`,  color = isSelected)) +
       geom_line(aes(group = name),size = 1, alpha = 0.3) + 
-      geom_line(data = this_one_instead %>% filter(isSelected == 'Selected'),size = 1) +
+      geom_line(data = with_inflation %>% filter(isSelected == 'Selected'),size = 1) +
       scale_color_manual(
         values = c("Selected" = "blue", "Other" = "grey")) +
       labs(
