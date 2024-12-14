@@ -14,6 +14,32 @@ library(stringr)
 ```
 
 ```{r}
+# CPI data from 2012 to 2022
+cpi_data <- data.frame(
+  Year = 2012:2022,
+  CPI = c(229.6, 233.0, 236.7, 237.0, 240.0, 245.1, 251.1, 255.7, 258.8, 271.0, 292.7) 
+)
+
+# Set base year for CPI adjustment (2022)
+base_year <- 2022
+cpi_base <- cpi_data %>% filter(Year == base_year) %>% pull(CPI)
+```
+
+```{r}
+# Join income_data with cpi_data
+income_data_adjusted <- income_data %>%
+  left_join(cpi_data, by = "Year") %>%  # Add CPI values for each year
+  mutate(
+    estimate_adjusted = estimate * (cpi_base / CPI)  # Adjust to 2022 dollars
+  ) %>%
+  select(GEOID, tract, estimate, estimate_adjusted, Year, geometry)
+
+# Display the first few rows of the adjusted data
+head(income_data_adjusted)
+
+```
+
+```{r}
 census_api_key("e335b952d56e1201ea0415502034c9e438d6fd83", install = TRUE)
 ```
 
@@ -83,4 +109,3 @@ for (year in years) {
 ```{r}
 saveRDS(income_data, file = "income_data_2012_2022.rds")
 ```
-
