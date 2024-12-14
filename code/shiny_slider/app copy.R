@@ -6,7 +6,6 @@
 #
 #    https://shiny.posit.co/
 #
-
 library(shiny)
 library(leaflet)
 library(ggplot2)
@@ -14,15 +13,13 @@ library(dplyr)
 library(sf)
 library(tigris)
 library(tidyr)
-
+library(stringr)
 merged_data_clean <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/data/mn_map_data.rds")
 this_one_instead <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/data/mn_income_map.rds") %>% 
   dplyr::rename("2012" = "Real_2012", "2013" = "Real_2013", "2014" = "Real_2014", "2015" = "Real_2015", "2016" = "Real_2016", "2017" = "Real_2017", "2018" = "Real_2018", "2019" = "Real_2019", "2020" = "Real_2020", "2021" = "Real_2021", "2022" = "Real_2022") 
-
 this_one_instead <- this_one_instead %>% 
   pivot_longer(cols = 15:25, names_to = "YEAR", values_to = "Income per capita") %>% 
   mutate(YEAR = as.numeric(YEAR))
-
 coordinates <- st_centroid(this_one_instead) %>% 
   select(-YEAR, -`Income per capita`)
 coordinates <- coordinates %>% 
@@ -30,16 +27,25 @@ coordinates <- coordinates %>%
          LAT = st_coordinates(.)[,2]) %>% 
   group_by(name) %>% 
   summarize(LON = mean(LON), LAT = mean(LAT))
-
+# Load the tract-level income data
+tract_income_data <- readRDS("/Users/elliespangler/Desktop/STAT112/challenges/welovemaps_project/code/income_data_2012_2022.rds")
 minnesota_counties <- counties(state = "MN", cb = TRUE, class = "sf")
-
 ui <- fluidPage(
   titlePanel("Minnesota Counties: Income and Racial Makeup Over Time"),
   tabsetPanel(
     tabPanel("Introduction",
-             p("This app allows you to explore income and racial demographics in Minnesota counties over time. In the Couny-Level Analysis tab, you can click on a county to view income and racial demographics over time.
-               However, upon further considerations, we decided to zoom in to the tract level analysis for urban areas of Minnesota, because we believe that tract level analysis will provide more insights to our research 
-               question of recognizing pattern of gentrification in urban areas of Minnesota. In the Tract-Level Analysis tab, you can click on a tract to view income and racial demographics over time.")),
+             div(style = "text-align: center;",
+                 img(src = "mapanimate.gif", height = "400px", width = "600px")
+             ),
+             p("Welcome to our interactive app for exploring income and racial 
+         demographics in Minnesota counties. This tool allows you to analyze 
+         demographic trends and patterns over time.In the County-Level Analysis 
+         tab, you can click on any county to view detailed income and racial 
+         demographic data over the years. Recognizing the need for a more 
+         detailed perspective, we have also included a Tract-Level Analysis tab 
+         that focuses on urban areas. We believe this detailed analysis at the 
+         tract level offers deeper insights into the patterns and trends of 
+         gentrification in Minnesota's urban communities.")),
     tabPanel("County-Level Analysis",
              sidebarLayout(
                sidebarPanel(
@@ -62,22 +68,25 @@ ui <- fluidPage(
     tabPanel("Tract-Level Analysis",
              sidebarLayout(
                sidebarPanel(
-                 p("Click on a tract to view income and racial demographics over time.")
+                 p("Use the slider to select a year and view income trends by census tract."),
+                 sliderInput(
+                   "tract_year",
+                   "Select Year:",
+                   min = 2012,
+                   max = 2022,
+                   value = 2012,
+                   step = 1,
+                   animate = TRUE
+                 )
                ),
                mainPanel(
                  leafletOutput("tractMap"),
-                 h3("Income Trends"),
-                 plotOutput("tract_incomePlot"),
-                 h3("Racial Makeup Trends"),
-                 plotOutput("tract_racePlot")
-               )))
-  
-  
-    
-   
+                 h3("Income Trends by Tract"),
+                 plotOutput("tract_incomePlot")
+               )
+             ))
   )
 )
-
 server <- function(input, output, session) {
   
   output$countyMap <- renderLeaflet({
@@ -85,7 +94,7 @@ server <- function(input, output, session) {
     
     pal <- colorNumeric(
       palette = "viridis",
-      domain = c(40000, 90000)  
+      domain = c(30000, 95000)
     )
     leaflet(filtered_income) %>%
       addTiles() %>%
@@ -100,7 +109,7 @@ server <- function(input, output, session) {
         label = ~paste(name, ": $", round(`Income per capita`, 2)),
         layerId = ~name
       ) %>% 
-      addLegend("topright", pal = pal, values = c(40000, 90000),
+      addLegend("topright", pal = pal, values = c(30000, 95000),
                 title = str_c("Per Capita Income ", input$year),
                 labFormat = labelFormat(prefix = "$"),
                 opacity = 0.8
@@ -110,7 +119,6 @@ server <- function(input, output, session) {
   observe(
     {
       click <- input$countyMap_shape_click
-
       if(is.null(click)){
         return()
       }else{
@@ -158,26 +166,61 @@ server <- function(input, output, session) {
     
     county_data <- county_data %>%
       select(YEAR, White, Black, Hispanic, Asian, Indian_Alaska, Hawaiian_PI, Two_or_more)
-   
+    
     county_data <- county_data %>%
       mutate(Non_White = Black + Hispanic + Asian + Indian_Alaska + Hawaiian_PI + Two_or_more)
-      
+    
     ggplot(county_data, aes(x = YEAR)) +
-     geom_line(aes(y = year_percentage_change(White), color = "White Population")) +
-     # geom_line(aes(y = year_percentage_change(Non_White), color = "Non-White Population")) +
-     geom_line(aes(y = year_percentage_change(Hispanic), color = "Hispanic Population")) +
-     geom_line(aes(y = year_percentage_change(Asian), color = "Asian Population")) +
-     geom_line(aes(y = year_percentage_change(Indian_Alaska), color = "Indian/Alaska Population")) +
-     geom_line(aes(y = year_percentage_change(Hawaiian_PI), color = "Hawaiian/PI Population")) +
-     geom_line(aes(y = year_percentage_change(Two_or_more), color = "Two or More")) +
-     labs(title = paste("Population Composition Trends for", county_data$GeoName[1]),
-          y = "Percentage Change (%)",
-          color = "Legend") +
-     theme_minimal()
+      geom_line(aes(y = year_percentage_change(White), color = "White Population")) +
+      # geom_line(aes(y = year_percentage_change(Non_White), color = "Non-White Population")) +
+      geom_line(aes(y = year_percentage_change(Hispanic), color = "Hispanic Population")) +
+      geom_line(aes(y = year_percentage_change(Asian), color = "Asian Population")) +
+      geom_line(aes(y = year_percentage_change(Indian_Alaska), color = "Indian/Alaska Population")) +
+      geom_line(aes(y = year_percentage_change(Hawaiian_PI), color = "Hawaiian/PI Population")) +
+      geom_line(aes(y = year_percentage_change(Two_or_more), color = "Two or More")) +
+      labs(title = paste("Population Composition Trends for", county_data$GeoName[1]),
+           y = "Percentage Change (%)",
+           color = "Legend") +
+      theme_minimal()
+  })
+  output$tractMap <- renderLeaflet({
+    filtered_tract_income <- tract_income_data %>% filter(Year == input$tract_year)
+    
+    pal <- colorNumeric(
+      palette = "viridis",
+      domain = filtered_tract_income$estimate
+    )
+    
+    leaflet(filtered_tract_income) %>%
+      addTiles() %>%
+      addPolygons(
+        fillColor = ~pal(estimate),
+        fillOpacity = 0.7,
+        color = "black",
+        weight = 1,
+        highlight = highlightOptions(weight = 2, color = "red", bringToFront = TRUE),
+        label = ~paste0(tract, ": $", format(round(estimate, 0), big.mark = ","))
+      ) %>%
+      addLegend("bottomright", pal = pal, values = filtered_tract_income$estimate,
+                title = paste("Median Income", input$tract_year),
+                labFormat = labelFormat(prefix = "$"),
+                opacity = 0.7)
   })
   
-  # output$tractMap
-  # output$tract_incomePlot
-  # output$tract_racePlot
+  # Tract-Level Income Plot
+  output$tract_incomePlot <- renderPlot({
+    ggplot(tract_income_data, aes(x = Year, y = estimate, group = GEOID, color = tract)) +
+      geom_line(alpha = 0.3) +
+      geom_line(data = tract_income_data %>% filter(Year == input$tract_year), size = 1, color = "blue") +
+      labs(
+        title = "Median Household Income by Census Tract",
+        x = "Year",
+        y = "Median Income ($)",
+        color = "Tract"
+      ) +
+      theme_minimal() +
+      theme(legend.position = "none")
+  })
 }
+  
 shinyApp(ui = ui, server = server)

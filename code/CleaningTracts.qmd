@@ -1,0 +1,111 @@
+---
+title: "Tract-Level-Cleaning"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidycensus)
+library(sf)
+library(dplyr)
+library(ggplot2)
+library(viridis)
+library(stringr)
+```
+
+```{r}
+# CPI data from 2012 to 2022
+cpi_data <- data.frame(
+  Year = 2012:2022,
+  CPI = c(229.6, 233.0, 236.7, 237.0, 240.0, 245.1, 251.1, 255.7, 258.8, 271.0, 292.7) 
+)
+
+# Set base year for CPI adjustment (2022)
+base_year <- 2022
+cpi_base <- cpi_data %>% filter(Year == base_year) %>% pull(CPI)
+```
+
+```{r}
+# Join income_data with cpi_data
+income_data_adjusted <- income_data %>%
+  left_join(cpi_data, by = "Year") %>%  # Add CPI values for each year
+  mutate(
+    estimate_adjusted = estimate * (cpi_base / CPI)  # Adjust to 2022 dollars
+  ) %>%
+  select(GEOID, tract, estimate, estimate_adjusted, Year, geometry)
+
+# Display the first few rows of the adjusted data
+head(income_data_adjusted)
+
+```
+
+```{r}
+census_api_key("e335b952d56e1201ea0415502034c9e438d6fd83", install = TRUE)
+```
+
+```{r}
+readRenviron("~/.Renviron")
+```
+
+```{r}
+# Define the counties and state
+counties <- c("Anoka", "Carver", "Dakota", "Hennepin", "Ramsey", "Scott", "Washington")
+state <- "MN"
+years <- 2012:2022
+
+# Function to fetch ACS data for a given year
+fetch_income_data <- function(year) {
+  get_acs(
+    geography = "tract",
+    variables = "B19013_001",  # Median Household Income
+    state = state,
+    county = counties,
+    year = year,
+    survey = "acs5",
+    geometry = TRUE
+  ) %>%
+    mutate(Year = year)  # Add a column for the year
+}
+
+# Fetch data for all years and combine into one data frame
+income_data_list <- lapply(years, fetch_income_data)
+income_data <- bind_rows(income_data_list)
+
+# Clean the tract names
+income_data <- income_data %>%
+  rename(tract = NAME) %>%
+  mutate(tract = str_extract(tract, "Census Tract [0-9\\.]+"))
+
+# Remove unnecessary columns
+income_data <- income_data %>%
+  select(GEOID, tract, estimate, Year, geometry)
+```
+
+```{r}
+# Function to create a plot for a given year
+plot_income_by_year <- function(data, year) {
+  ggplot(data = filter(data, Year == year)) +
+    geom_sf(aes(fill = estimate), color = "white", size = 0.2) +
+    scale_fill_viridis(option = "plasma", na.value = "grey80", direction = -1) +
+    labs(
+      title = paste("Median Household Income by Census Tract -", year),
+      fill = "Income ($)",
+      caption = "Source: ACS 5-Year Estimates"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16),
+      legend.position = "right"
+    )
+}
+
+# Generate and save plots for each year
+for (year in years) {
+  print(plot_income_by_year(income_data, year))
+}
+
+```
+
+```{r}
+saveRDS(income_data, file = "income_data_2012_2022.rds")
+```
