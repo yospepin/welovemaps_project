@@ -281,8 +281,8 @@ server <- function(input, output, session) {
   })
   
   
-  #tract_data <- readRDS("../../data/tract_data.rds")
-  tract_data <- readRSD("income_race_data_2012_2022.rds")
+  tract_data <- readRDS("tract_data.rds")
+  
   
   output$tract_racePlot <- renderPlot({
     req(input$tractMap_shape_click$id)
