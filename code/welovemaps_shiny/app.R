@@ -124,6 +124,7 @@ ui <- fluidPage(
   )
 )
 
+
 # app server
 server <- function(input, output, session) {
   
@@ -252,7 +253,7 @@ server <- function(input, output, session) {
                 opacity = 0.7)
   })
   
-  # Observe click on the map
+  
   selected_tract <- reactive({
     req(input$tractMap_shape_click$id)
     tract_income_data %>% filter(GEOID == input$tractMap_shape_click$id)
