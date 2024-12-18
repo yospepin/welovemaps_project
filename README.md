@@ -15,7 +15,12 @@ When working on this project, we realized that the best conclusions that could b
 - The degree to which the racial composition of counties with higher per capita income changes is relatively lower than that of the low per capita income counties, and this can be seen on less fluctuation in the different lines for each race on the "racial makeup trend" plot. This could suggest that these counties are more stable in terms of people moving in and out, and most people who move it are able to do quite well for themselve and so decide to stay, hence making the line on the plot be more consistent with an increase than a drease, making it more uniform with ledd fluctuations.
 - Overall, there as been an increase in per capita income since 2012, but the graph shows a drop from 2021 to 2022. This might have been due to a tightening monetary policy and surging inflation in that period. The Federal Reserve raised benchmark interest rates multiple times in 2022, which might have affected budgets and decreased disposable income. As for racial makeup over all, there was a general trend on an increase in population, though some counties experienced a drop in a certain population such as Renville county which experienced a slight drop in its Asian population.
 
-There are many areas of for improvement and further research in this projec, two of which include 
+There are many areas of for improvement and further research in this projec, two of which include looking into income changes within the different race, to get an understanding of how this might  have affected the population changes of that group in certain areas, and a dive into other factors that may influence income changes such as job availability and, also observing the different areas in which income grew leading to growth in per capita income, to help get a bette sense of what accounts for the income changes and how this might be integrated in policy making to help calm down any severe income disparities.
+
+### Ethical considerations we bear in mind
+- The data collected by the census is anonymous, and so pretects the identity and privacy of the responders in our datasets.
+- Throughout the porject, we aimed at not targetting any group in anyway, but provide a bias-free and overall report of our observations.
+- We recognise that census data may contain errors, and misrepresent certain groups of people, and so we keep an open mind in describing our observations.
 
 ### Shiny app Link
 [shiny](https://irisfokamsi.shinyapps.io/welovemaps_shiny/)
