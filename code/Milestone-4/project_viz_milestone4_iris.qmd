@@ -117,6 +117,7 @@ mn_demographic_long <- demographic_all %>%
 mn_demographic_long %>% arrange(desc(YEAR)) %>% head()
 ```
 
+##demographic data plot
 ```{r}
 # Different plots showing different distributions in different counties filtered
 demographic_data %>% filter(CTYNAME == "Ramsey") %>% na.omit() %>% 
@@ -131,6 +132,7 @@ demographic_data %>% filter(CTYNAME == "Ramsey") %>% na.omit() %>%
   
 ```
 
+##demographic data plot
 ```{r}
 demographic_data %>% filter(CTYNAME == "Aitkin") %>% na.omit() %>% 
   ggplot(aes(x = non_white, y = White)) +
@@ -140,16 +142,53 @@ demographic_data %>% filter(CTYNAME == "Aitkin") %>% na.omit() %>%
   theme_light()
 ```
 
-
+##function to create the percent change
 ```{r}
+year_percentage_change <- function(x){
+    (x - x[1]) / x[1] * 100}
+```
+
+##failed income plot
+```{r}
+
 income_year %>% 
-  filter(county!="Minnesota") %>% 
+  filter(county == "Aitkin") %>%
   ggplot(aes(x = year)) +
-  geom_point(aes(y = farm_income))
+  geom_line(aes(y = non_farm_income, color = "non_farm"))
+```
+
+## plot of different income changes
+```{r}
+income_change <- income_year %>% 
+  mutate(`2012` = Real_2012 - Real_2012,
+         `2013` = (Real_2013 - Real_2012)/Real_2012 * 100,
+         `2014` = (Real_2014 - Real_2012)/Real_2012 * 100,
+         `2015` = (Real_2015 - Real_2012)/Real_2012 * 100,
+         `2016` = (Real_2016 - Real_2012)/Real_2012 * 100,
+         `2017` = (Real_2017 - Real_2012)/Real_2012 * 100,
+         `2018` = (Real_2018 - Real_2012)/Real_2012 * 100,
+         `2019` = (Real_2019 - Real_2012)/Real_2012 * 100,
+         `2020` = (Real_2020 - Real_2012)/Real_2012 * 100,
+         `2021` = (Real_2021 - Real_2012)/Real_2012 * 100,
+         `2022` = (Real_2022 - Real_2012)/Real_2012 * 100)
+
+income_change <- income_change %>% 
+  select(-GeoFIPS, -starts_with("Real_"))
 ```
 
 
+```{r}
+# install.packages("devtools")
+# devtools::install_github("ricardo-bion/ggradar")
+# library(ggradar)
+income_change_new <- income_change %>% filter(GeoName=="Aitkin, MN") %>% select(-GeoName)
 
+ggradar(income_change_new, 
+        grid.min = -190,
+        grid.max = 40) 
+ 
+
+```
 
 
 
