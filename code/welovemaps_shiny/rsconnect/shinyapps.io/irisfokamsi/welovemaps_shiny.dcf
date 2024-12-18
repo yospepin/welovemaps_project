@@ -1,0 +1,12 @@
+name: welovemaps_shiny
+title: welovemaps_shiny
+username: irisfokamsi
+account: irisfokamsi
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13617035
+bundleId: 9539067
+url: https://irisfokamsi.shinyapps.io/welovemaps_shiny/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

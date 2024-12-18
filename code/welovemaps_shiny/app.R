@@ -15,15 +15,17 @@ library(tigris)
 library(tidyr)
 library(stringr)
 
-merged_data_clean <- readRDS("mn_map_data.rds")
-this_one_instead <- readRDS("mn_income_map.rds") %>% 
+
+demographic_data <- readRDS("mn_map_data.rds")
+income_data <- readRDS("mn_income_map.rds") %>% 
   dplyr::rename("2012" = "Real_2012", "2013" = "Real_2013", "2014" = "Real_2014", "2015" = "Real_2015", "2016" = "Real_2016", "2017" = "Real_2017", "2018" = "Real_2018", "2019" = "Real_2019", "2020" = "Real_2020", "2021" = "Real_2021", "2022" = "Real_2022") 
-this_one_instead <- this_one_instead %>% 
+income_data <- income_data %>% 
   pivot_longer(cols = 15:25, names_to = "YEAR", values_to = "Income per capita") %>% 
   mutate(YEAR = as.numeric(YEAR))
 
+
 # Get central coordinates of the counties on the map
-coordinates <- st_centroid(this_one_instead) %>% 
+coordinates <- st_centroid(income_data) %>% 
   select(-YEAR, -`Income per capita`)
 coordinates <- coordinates %>%       # converting geometry coordinates to bi-coordinates and storing them
   mutate(LON = st_coordinates(.)[,1],
@@ -31,9 +33,12 @@ coordinates <- coordinates %>%       # converting geometry coordinates to bi-coo
   group_by(name) %>% 
   summarize(LON = mean(LON), LAT = mean(LAT))
 
+
 # Load the tract-level income data
 tract_income_data <- readRDS("income_data_2012_2022.rds")
+tract_data <- readRDS("tract_data.rds")
 minnesota_counties <- counties(state = "MN", cb = TRUE, class = "sf")
+
 
 # ui of the app
 ui <- fluidPage(
@@ -130,9 +135,9 @@ server <- function(input, output, session) {
   
   # county map output
   output$countyMap <- renderLeaflet({
-    filtered_income <- this_one_instead %>% filter(YEAR == input$year)
+    filtered_income <- income_data %>% filter(YEAR == input$year)
     
-    pal <- colorNumeric(
+    pal <- colorNumeric(    # defining color palette for map
       palette = "viridis",
       domain = c(30000, 95000)
     )
@@ -155,41 +160,45 @@ server <- function(input, output, session) {
       )
   })
   
-  # event recognition for placing marker on clicked county
-  observe(
+  
+  # Add markers on a county after a click on that county
+  observeEvent(input$countyMap_shape_click,
     {
       click <- input$countyMap_shape_click
+      sub <- coordinates[coordinates$name==click$id, c("LAT", "LON", "name")]
+      latitude <- sub$LAT
+      longitude <- sub$LON
+      county_name <- sub$name
+
       if(is.null(click)){
         return()
       }else{
-        sub <- coordinates[coordinates$name==click$id, c("LAT", "LON", "name")]
-        latitude <- sub$LAT
-        longitude <- sub$LON
-        county_name <- sub$name
-        
-        leafletProxy("countyMap") %>%
+
+        leafletProxy("countyMap") %>%    # updates the map with new coordinates from clicks
           clearMarkers() %>%
           addMarkers(lng = longitude, lat = latitude, popup = county_name)
       }
     }
   )
   
+  
   selected_county <- reactive({
     req(input$countyMap_shape_click$id)
-    merged_data_clean %>% filter(NAME == input$countyMap_shape_click$id)
+    demographic_data %>% filter(NAME == input$countyMap_shape_click$id)
   })
+  
   
   # income change plot output
   output$incomePlot <- renderPlot({
     #browser()
     req(input$countyMap_shape_click$id)
     selected_county_name <- input$countyMap_shape_click$id
-    this_one_instead <- this_one_instead %>%
+    income_data <- income_data %>%
       mutate(isSelected = ifelse(name == selected_county_name, "Selected", "Other"))
     
-    ggplot(this_one_instead, aes(x = YEAR, y = `Income per capita`,  color = isSelected)) +
+    ggplot(income_data, aes(x = YEAR, y = `Income per capita`,  color = isSelected)) +
       geom_line(aes(group = name),size = 1, alpha = 0.3) + 
-      geom_line(data = this_one_instead %>% filter(isSelected == 'Selected'),size = 1) +
+      geom_line(data = income_data %>% filter(isSelected == 'Selected'),size = 1) +
       scale_color_manual(
         values = c("Selected" = "blue", "Other" = "grey")) +
       labs(
@@ -199,9 +208,11 @@ server <- function(input, output, session) {
       theme_minimal()
   })
   
+  
   # Function to obtain percent change of elements in a variable
   year_percentage_change <- function(x){     
     (x - x[1]) / x[1] * 100}
+  
   
   # Race shift plot output
   output$racePlot <- renderPlot({
@@ -227,7 +238,8 @@ server <- function(input, output, session) {
       theme_minimal()
   })
   
-  # 
+  
+  # Track level map plot
   output$tractMap <- renderLeaflet({
     filtered_tract_income <- tract_income_data %>% filter(Year == input$tract_year)
     
@@ -259,6 +271,7 @@ server <- function(input, output, session) {
     tract_income_data %>% filter(GEOID == input$tractMap_shape_click$id)
   })
   
+  
   # Tract-Level Income Plot
   output$tract_incomePlot <- renderPlot({
     req(input$tractMap_shape_click$id)
@@ -281,9 +294,7 @@ server <- function(input, output, session) {
   })
   
   
-  tract_data <- readRDS("tract_data.rds")
-  
-  
+  # tract level demographic plot
   output$tract_racePlot <- renderPlot({
     req(input$tractMap_shape_click$id)
     selected_tract_id <- input$tractMap_shape_click$id
